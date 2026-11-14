@@ -1,0 +1,561 @@
+/**
+ * Ronda de Tarot · inscripciones, pagos, mails y panel de admin
+ * Proyecto de Apps Script que guarda en la planilla «Ronda de Tarot · inscripciones» (ver PLANILLA_ID).
+ *
+ * - Las rondas (fechas, precios, cupos) se leen de SITIO/rondas.json: se cargan en un solo lugar.
+ * - doPost: guarda la inscripción, controla cupos, verifica si el mail tiene Mesa de Tarot,
+ *   arma el cobro (Mercado Pago o PayPal, uno por inscripción) y manda los mails.
+ *   También recibe los avisos de pago de Mercado Pago (?mp=1).
+ * - enviarAvisos: corre cada 15 minutos. Revisa los pagos pendientes y manda el mail del día
+ *   anterior (con el link) y el recordatorio de media hora antes (solo online), solo a las confirmadas.
+ * - Panel de admin: la URL /dev del proyecto con ?admin=1 (solo la cuenta de Lorena).
+ *
+ * Claves (Configuración del proyecto → Propiedades de la secuencia de comandos):
+ *   MP_TOKEN        Access Token de producción de Mercado Pago
+ *   PAYPAL_ID       Client ID de la app de PayPal (Live)
+ *   PAYPAL_SECRETO  Secret de la app de PayPal (Live)
+ *   RONDA_CLAVE     la misma clave que RONDA_CLAVE en Supabase (para verificar Mesa de Tarot)
+ * Si falta alguna, la página sigue funcionando con los links de pago fijos y la verificación a mano.
+ */
+
+// ===================== CONFIGURACIÓN =====================
+const PLANILLA_ID = '1u7b6zuLw-zrpeT0dL9J3n_gmFo8MLHETcscCmk7NPjQ'; // «Ronda de Tarot · inscripciones»
+const SITIO = 'https://rondadetarot.com';        // donde está publicada la página
+const EXEC = 'https://script.google.com/macros/s/AKfycbyVMU9harMPmKlwl0jIS37taNIWohfFyhH2oEfR2FHpBBTQ0Z6Hi_RTmFST3qjGdQln/exec';
+const AVISOS_A = 'lorena.arabia@gmail.com';          // a quién le llegan los avisos; única cuenta con acceso al panel
+const INSTAGRAM = '@lorenabroda';
+const MESA_FN = 'https://ydbvoebheraccagntksw.supabase.co/functions/v1/ronda-tiene-mesa';
+// Link de la videollamada de cada ronda online (id de la ronda → link)
+const LINKS = {
+  '2026-11-25-online': 'https://meet.google.com/xxx-xxxx-xxx'
+};
+const MIN_ANTES = 30;   // recordatorio: minutos antes de empezar
+// =========================================================
+
+const HOJA = 'Inscripciones';
+const COL = ['Fecha de inscripción','Ronda','Tipo','Nombre','Mail','WhatsApp','Acepta grabación','Estado','Fecha ronda','Hora','Fin','Lugar','Precio','Aviso día antes','Aviso previo','Pago','Necesita mazo','Tiene Mesa','Experiencia','Zona horaria','País','ID','Cobro','Monto ARS','Monto USD','Órdenes PayPal'];
+const C = { fecha: 0, ronda: 1, tipo: 2, nombre: 3, mail: 4, wa: 5, grab: 6, estado: 7, fRonda: 8, hora: 9, fin: 10, lugar: 11, precio: 12, avisoDia: 13, avisoPrevio: 14, pago: 15, mazo: 16, mesa: 17, nivel: 18, tz: 19, pais: 20, id: 21, cobro: 22, ars: 23, usd: 24, ordenes: 25 };
+const PENDIENTES = ['seña pendiente', 'pago pendiente'];
+const WA_MAZO = 'https://wa.me/5491131042216?text=Hola%20Lorena%2C%20quiero%20ayuda%20para%20elegir%20un%20mazo%20de%20tarot';
+
+function prop_(k) { return (PropertiesService.getScriptProperties().getProperty(k) || '').trim(); }
+function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+function num_(v) { const n = Number(String(v || '').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')); return isFinite(n) ? n : 0; }
+function ars_(n) { return '$' + Math.round(n).toLocaleString('es-AR').replace(/,/g, '.'); }
+
+function hoja_() {
+  const ss = SpreadsheetApp.openById(PLANILLA_ID);
+  let sh = ss.getSheetByName(HOJA);
+  if (!sh) { sh = ss.insertSheet(HOJA); sh.appendRow(COL); sh.setFrozenRows(1); }
+  if (sh.getLastColumn() < COL.length) sh.getRange(1, 1, 1, COL.length).setValues([COL]);
+  return sh;
+}
+function filas_() { return hoja_().getDataRange().getValues(); }
+function ocupados_(filas) {
+  const n = {};
+  (filas || filas_()).slice(1).forEach(f => { if (f[C.estado] !== 'cancelada') n[f[C.ronda]] = (n[f[C.ronda]] || 0) + 1; });
+  return n;
+}
+/** Busca la fila de una inscripción por su ID. Devuelve {sh, i (fila de la planilla), f} o null. */
+function fila_(id) {
+  if (!id) return null;
+  const sh = hoja_(); const filas = sh.getDataRange().getValues();
+  for (let i = 1; i < filas.length; i++) if (String(filas[i][C.id]) === String(id)) return { sh: sh, i: i + 1, f: filas[i] };
+  return null;
+}
+
+// ---------- rondas.json (una sola fuente para la página y el script) ----------
+function rondas_() {
+  const cache = CacheService.getScriptCache();
+  const c = cache.get('rondas');
+  if (c) return JSON.parse(c);
+  try {
+    const r = UrlFetchApp.fetch(SITIO + '/rondas.json?v=' + Date.now(), { muteHttpExceptions: true });
+    if (r.getResponseCode() === 200) {
+      const txt = r.getContentText(); const lista = JSON.parse(txt);
+      cache.put('rondas', txt, 120);
+      PropertiesService.getScriptProperties().setProperty('RONDAS_RESPALDO', txt);
+      return lista;
+    }
+  } catch (e) {}
+  return JSON.parse(prop_('RONDAS_RESPALDO') || '[]');
+}
+function ronda_(id) { return rondas_().filter(r => r.id === id)[0] || null; }
+
+// ---------- Mesa de Tarot ----------
+/** true / false si se pudo consultar; null si no hay clave o la consulta falló. */
+function tieneMesa_(email) {
+  const clave = prop_('RONDA_CLAVE');
+  if (!clave || !email) return null;
+  try {
+    const r = UrlFetchApp.fetch(MESA_FN, { method: 'post', contentType: 'application/json', payload: JSON.stringify({ email: String(email).trim().toLowerCase() }), headers: { 'x-ronda-clave': clave }, muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) return null;
+    const j = JSON.parse(r.getContentText());
+    return typeof j.tiene === 'boolean' ? j.tiene : null;
+  } catch (e) { return null; }
+}
+
+// ---------- Mercado Pago ----------
+function mp_(path, opt) {
+  const t = prop_('MP_TOKEN'); if (!t) return null;
+  opt = opt || {};
+  const r = UrlFetchApp.fetch('https://api.mercadopago.com' + path, { method: opt.method || 'get', contentType: 'application/json', payload: opt.body ? JSON.stringify(opt.body) : undefined, headers: Object.assign({ Authorization: 'Bearer ' + t }, opt.headers || {}), muteHttpExceptions: true });
+  const code = r.getResponseCode();
+  if (code < 200 || code >= 300) { console.error('MP ' + path + ' → ' + code + ' ' + r.getContentText().slice(0, 300)); return null; }
+  return JSON.parse(r.getContentText());
+}
+function mpPreferencia_(x) {
+  const vuelta = SITIO + '/pagar/?id=' + encodeURIComponent(x.id) + '&vuelta=mp';
+  const p = mp_('/checkout/preferences', { method: 'post', headers: { 'X-Idempotency-Key': 'pref-' + x.id + '-' + Date.now() }, body: {
+    items: [{ id: x.ronda, title: x.titulo, quantity: 1, unit_price: x.ars, currency_id: 'ARS' }],
+    payer: { email: x.email },
+    external_reference: x.id,
+    back_urls: { success: vuelta, pending: vuelta, failure: vuelta },
+    auto_return: 'approved',
+    notification_url: EXEC + '?mp=1',
+    statement_descriptor: 'RONDA DE TAROT'
+  } });
+  return p && p.init_point ? p.init_point : null;
+}
+/** Pago aprobado de Mercado Pago para esta inscripción, o null. */
+function mpAprobado_(id, ars) {
+  const s = mp_('/v1/payments/search?external_reference=' + encodeURIComponent(id) + '&sort=date_created&criteria=desc');
+  if (!s || !s.results) return null;
+  const ok = s.results.filter(p => p.status === 'approved' && p.currency_id === 'ARS' && Number(p.transaction_amount) >= ars - 1)[0];
+  return ok ? { medio: 'Mercado Pago', monto: ars_(ok.transaction_amount), ref: String(ok.id) } : null;
+}
+
+// ---------- PayPal ----------
+function ppToken_() {
+  const id = prop_('PAYPAL_ID'), sec = prop_('PAYPAL_SECRETO'); if (!id || !sec) return null;
+  const cache = CacheService.getScriptCache(); const c = cache.get('pp_token'); if (c) return c;
+  const r = UrlFetchApp.fetch('https://api-m.paypal.com/v1/oauth2/token', { method: 'post', payload: { grant_type: 'client_credentials' }, headers: { Authorization: 'Basic ' + Utilities.base64Encode(id + ':' + sec) }, muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) { console.error('PayPal token → ' + r.getResponseCode()); return null; }
+  const j = JSON.parse(r.getContentText());
+  cache.put('pp_token', j.access_token, Math.max(60, Math.min(21600, (j.expires_in || 3600) - 120)));
+  return j.access_token;
+}
+function pp_(path, opt) {
+  const t = ppToken_(); if (!t) return null;
+  opt = opt || {};
+  const r = UrlFetchApp.fetch('https://api-m.paypal.com' + path, { method: opt.method || 'get', contentType: 'application/json', payload: opt.body !== undefined ? JSON.stringify(opt.body) : undefined, headers: Object.assign({ Authorization: 'Bearer ' + t }, opt.headers || {}), muteHttpExceptions: true });
+  const code = r.getResponseCode();
+  if (code < 200 || code >= 300) { console.error('PayPal ' + path + ' → ' + code + ' ' + r.getContentText().slice(0, 300)); return null; }
+  return JSON.parse(r.getContentText() || '{}');
+}
+/** Crea una orden de PayPal y devuelve {orden, url}. */
+function ppOrden_(x) {
+  const vuelta = SITIO + '/pagar/?id=' + encodeURIComponent(x.id) + '&vuelta=pp';
+  const o = pp_('/v2/checkout/orders', { method: 'post', headers: { 'PayPal-Request-Id': 'ord-' + x.id + '-' + Date.now() }, body: {
+    intent: 'CAPTURE',
+    purchase_units: [{ reference_id: x.id, custom_id: x.id, description: x.titulo, amount: { currency_code: 'USD', value: x.usd.toFixed(2) } }],
+    payment_source: { paypal: { experience_context: { brand_name: 'Ronda de Tarot', shipping_preference: 'NO_SHIPPING', user_action: 'PAY_NOW', return_url: vuelta, cancel_url: vuelta + '&cancelado=1' } } }
+  } });
+  if (!o || !o.id) return null;
+  const l = (o.links || []).filter(k => k.rel === 'payer-action' || k.rel === 'approve')[0];
+  return l ? { orden: o.id, url: l.href } : null;
+}
+/** Revisa (y si hace falta cobra) una orden de PayPal. Devuelve el pago o null. */
+function ppAprobado_(orden, id, usd) {
+  let o = pp_('/v2/checkout/orders/' + encodeURIComponent(orden));
+  if (!o) return null;
+  const pu = (o.purchase_units || [])[0] || {};
+  if (pu.custom_id && pu.custom_id !== id) return null;
+  if (o.status === 'APPROVED') o = pp_('/v2/checkout/orders/' + encodeURIComponent(orden) + '/capture', { method: 'post', body: {}, headers: { 'PayPal-Request-Id': 'cap-' + orden } }) || o;
+  const cap = ((((o.purchase_units || [])[0] || {}).payments || {}).captures || [])[0];
+  if (!cap || cap.status !== 'COMPLETED') return null;
+  if (cap.amount.currency_code !== 'USD' || Number(cap.amount.value) < usd - 0.01) return null;
+  return { medio: 'PayPal', monto: 'US$ ' + Number(cap.amount.value).toString().replace('.', ','), ref: cap.id };
+}
+
+// ---------- Web app ----------
+function doGet(e) {
+  const p = (e && e.parameter) || {};
+  if (p.admin) return panel_();
+  return json_({ ocupados: ocupados_() });
+}
+
+function doPost(e) {
+  const p = (e && e.parameter) || {};
+  if (p.mp) return json_(avisoMp_(e));
+  let d;
+  try { d = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, msg: 'Datos inválidos.' }); }
+  if (d.accion === 'pagar') return json_(pagar_(d.id, d.medio));
+  if (d.accion === 'estado') return json_(estado_(d.id, d.orden));
+  return json_(inscribir_(d));
+}
+
+function inscribir_(d) {
+  const r = ronda_(d.ronda);
+  if (!r) return { ok: false, msg: 'No encontramos esa ronda. Recargá la página y probá de nuevo.' };
+  if (!d.nombre || !/^\S+@\S+\.\S+$/.test(String(d.email || ''))) return { ok: false, msg: 'Faltan datos.' };
+  const email = String(d.email).trim();
+  // Mesa de Tarot: se consulta siempre en las online que son sin cargo con Mesa (antes de tomar el lock).
+  const mesa = r.gratis_mesa ? tieneMesa_(email) : null;
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const sh = hoja_();
+    if ((ocupados_(sh.getDataRange().getValues())[r.id] || 0) >= Number(r.cupos)) return { ok: false, lleno: true, msg: 'Ya no quedan lugares en esta ronda.' };
+    const gratis = mesa === true;
+    const cobra = !!r.cobro && !gratis;
+    const id = Utilities.getUuid().replace(/-/g, '').slice(0, 20);
+    const estado = cobra ? (r.cobro === 'sena' ? 'seña pendiente' : 'pago pendiente') : 'confirmada';
+    const mesaTxt = gratis ? 'sí (verificado)' : d.conmesa ? (mesa === false ? 'dijo que sí, no encontrado' : 'dijo que sí, sin verificar') : '';
+    sh.appendRow([new Date(), r.id, r.tipo, d.nombre, email, "'" + (d.whatsapp || ''), d.grabacion || '', estado,
+      "'" + r.fecha, "'" + r.hora, "'" + (r.fin || ''), r.lugar, r.precio, '', '',
+      cobra ? 'pendiente (' + r.monto + (r.cobro === 'sena' ? ' de seña' : '') + ')' : (gratis ? 'sin cargo (tiene Mesa)' : ''),
+      d.sinmazo || '', mesaTxt, d.nivel || '', d.tz || '', d.pais || '', id, cobra ? r.cobro : '', cobra ? (r.ars || num_(r.monto)) : '', cobra && r.usd ? r.usd : '', '']);
+    lock.releaseLock();
+    const m = datosMail_(r, { nombre: d.nombre, email: email, grabacion: d.grabacion, sinmazo: d.sinmazo, nivel: d.nivel, tz: d.tz, pais: d.pais, id: id, cobra: cobra, gratis: gratis, conmesa: !!d.conmesa, mesa: mesa });
+    enviar_('confirmacion', m);
+    if (d.nivel === 'principiante') enviar_('guia', m);
+    MailApp.sendEmail(AVISOS_A, 'Nueva inscripción · ' + r.id + (d.sinmazo ? (r.tipo === 'online' ? ' · NECESITA AYUDA CON EL MAZO' : ' · HAY QUE PRESTARLE MAZO') : ''),
+      d.nombre + ' · ' + email + ' · ' + d.whatsapp + (d.grabacion ? '\nGrabación: ' + d.grabacion : '')
+      + (cobra ? '\nPago: pendiente (' + r.monto + (r.cobro === 'sena' ? ' de seña' : '') + '). Se marca solo cuando se acredita.' : '')
+      + (gratis ? '\nTiene Mesa de Tarot (verificado): sin cargo.' : d.conmesa ? (mesa === false ? '\nDijo que tiene Mesa de Tarot, pero no encontramos una compra con ese mail: se le cobra.' : '\nDijo que tiene Mesa de Tarot y no se pudo verificar: se reintenta solo cada 15 minutos.') : '')
+      + (d.sinmazo ? (r.tipo === 'online' ? '\nNo tiene mazo y quiere ayuda para elegir uno.' : '\nNo tiene mazo: hay que prestarle uno en la ronda.') : '')
+      + '\n\nPanel: ' + SITIO + '/admin/');
+    return { ok: true, id: id, cobra: cobra, gratis: gratis, mesa: mesa, cobro: cobra ? r.cobro : '',
+      pagar: cobra ? { mp: m.pago, pp: m.pago_usd || '' } : null };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, msg: 'No se pudo guardar la inscripción.' };
+  } finally { try { lock.releaseLock(); } catch (e) {} }
+}
+
+/** Datos que usan los mails (salen de rondas.json, no de lo que manda el navegador). */
+function datosMail_(r, x) {
+  const pagina = SITIO + '/pagar/?id=' + encodeURIComponent(x.id);
+  return { ronda: r.id, tipo: r.tipo, fecha: r.fecha, hora: r.hora, fin: r.fin || '', lugar: r.lugar, precio: r.precio,
+    nombre: x.nombre, email: x.email, grabacion: x.grabacion, sinmazo: x.sinmazo, nivel: x.nivel, tz: x.tz, pais: x.pais, id: x.id,
+    cobro: x.cobra ? r.cobro : '', monto: r.monto, monto_usd: r.monto_usd || '',
+    pago: x.cobra ? pagina + '&medio=mp' : '', pago_usd: x.cobra && r.usd ? pagina + '&medio=pp' : '',
+    gratis: x.gratis, conmesa: x.conmesa, mesa: x.mesa };
+}
+
+function titulo_(f) { return 'Ronda de Tarot ' + (f[C.tipo] === 'online' ? 'online' : 'presencial') + ' · ' + fechaLarga_(String(f[C.fRonda])) + (f[C.cobro] === 'sena' ? ' (seña)' : ''); }
+
+/** Arma el cobro de una inscripción (desde la página o desde el mail) y devuelve a dónde ir. */
+function pagar_(id, medio) {
+  const x = fila_(id);
+  if (!x) return { ok: false, msg: 'No encontramos tu inscripción.' };
+  const f = x.f;
+  if (f[C.estado] === 'confirmada') return { ok: true, pagado: true };
+  if (f[C.estado] === 'cancelada') return { ok: false, msg: 'Esta inscripción está cancelada. Si es un error, escribinos.' };
+  const pago = revisarPago_(x); if (pago) return { ok: true, pagado: true };
+  const r = ronda_(f[C.ronda]) || {};
+  const base = { id: f[C.id], ronda: f[C.ronda], titulo: titulo_(f), email: f[C.mail], ars: Number(f[C.ars]) || r.ars || num_(r.monto), usd: Number(f[C.usd]) || r.usd || 0 };
+  if (medio === 'pp') {
+    if (!base.usd) return { ok: false, msg: 'Esta ronda no se paga con PayPal.' };
+    const o = ppOrden_(base);
+    if (o) {
+      x.sh.getRange(x.i, C.ordenes + 1).setValue([f[C.ordenes], o.orden].filter(String).join(','));
+      return { ok: true, url: o.url };
+    }
+    return r.pago_usd ? { ok: true, url: r.pago_usd, fijo: true } : { ok: false, msg: 'No pudimos armar el pago. Probá de nuevo en un rato.' };
+  }
+  const u = mpPreferencia_(base);
+  if (u) return { ok: true, url: u };
+  return r.pago ? { ok: true, url: r.pago, fijo: true } : { ok: false, msg: 'No pudimos armar el pago. Probá de nuevo en un rato.' };
+}
+
+/** Lo consulta la página a la vuelta del pago. */
+function estado_(id, orden) {
+  let x = fila_(id);
+  if (!x) return { ok: false, msg: 'No encontramos tu inscripción.' };
+  if (orden && PENDIENTES.indexOf(x.f[C.estado]) >= 0 && String(x.f[C.ordenes]).split(',').indexOf(String(orden)) < 0) {
+    // la orden vuelve en la URL de PayPal; solo se acepta si es de esta inscripción (custom_id)
+    const o = pp_('/v2/checkout/orders/' + encodeURIComponent(orden));
+    if (o && ((o.purchase_units || [])[0] || {}).custom_id === x.f[C.id]) x.sh.getRange(x.i, C.ordenes + 1).setValue([x.f[C.ordenes], orden].filter(String).join(','));
+    x = fila_(id);
+  }
+  revisarPago_(x);
+  x = fila_(id);
+  return { ok: true, estado: x.f[C.estado], pagado: x.f[C.estado] === 'confirmada', nombre: String(x.f[C.nombre]).trim().split(' ')[0], tipo: x.f[C.tipo], cobro: x.f[C.cobro] };
+}
+
+/** Si la inscripción está pendiente y el pago ya se acreditó, la confirma. Devuelve el pago o null. */
+function revisarPago_(x) {
+  if (!x || PENDIENTES.indexOf(x.f[C.estado]) < 0) return null;
+  const f = x.f; const id = String(f[C.id]); if (!id) return null;
+  let pago = null;
+  const ars = Number(f[C.ars]) || 0, usd = Number(f[C.usd]) || 0;
+  if (ars) pago = mpAprobado_(id, ars);
+  if (!pago && usd) String(f[C.ordenes] || '').split(',').filter(String).some(o => (pago = ppAprobado_(o, id, usd)));
+  if (pago) confirmar_(x, pago);
+  return pago;
+}
+
+function confirmar_(x, pago) {
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const actual = x.sh.getRange(x.i, C.estado + 1).getValue();
+    if (PENDIENTES.indexOf(actual) < 0) return;
+    const sena = x.f[C.cobro] === 'sena';
+    x.sh.getRange(x.i, C.estado + 1).setValue('confirmada');
+    x.sh.getRange(x.i, C.pago + 1).setValue(pago.gratis ? 'sin cargo (tiene Mesa)' : pago.medio + ' · ' + pago.monto + (sena ? ' (seña)' : '') + ' · #' + pago.ref + ' · ' + Utilities.formatDate(new Date(), 'America/Argentina/Buenos_Aires', 'dd/MM HH:mm'));
+    if (pago.gratis) x.sh.getRange(x.i, C.mesa + 1).setValue('sí (verificado)');
+  } finally { lock.releaseLock(); }
+  const f = x.f; const r = ronda_(f[C.ronda]) || {};
+  const m = datosMail_(Object.assign({ id: f[C.ronda], tipo: f[C.tipo], fecha: String(f[C.fRonda]), hora: String(f[C.hora]), fin: String(f[C.fin]), lugar: f[C.lugar], precio: f[C.precio] }, r),
+    { nombre: f[C.nombre], email: f[C.mail], grabacion: f[C.grab], tz: f[C.tz], pais: f[C.pais], id: f[C.id], cobra: false, gratis: !!pago.gratis });
+  m.cobro = f[C.cobro]; m.pagado = pago;
+  enviar_('pago', m);
+  MailApp.sendEmail(AVISOS_A, (pago.gratis ? 'Mesa verificada · ' : 'Pago recibido · ') + f[C.ronda] + ' · ' + f[C.nombre],
+    f[C.nombre] + ' · ' + f[C.mail] + '\n' + (pago.gratis ? 'Tiene Mesa de Tarot: queda confirmada sin cargo.' : pago.medio + ' · ' + pago.monto + ' · #' + pago.ref) + '\n\nPanel: ' + SITIO + '/admin/');
+}
+
+/** Aviso de Mercado Pago (notification_url = EXEC?mp=1). */
+function avisoMp_(e) {
+  try {
+    const p = e.parameter || {};
+    let pid = p['data.id'] || (p.topic === 'payment' || p.type === 'payment' ? p.id : '');
+    if (!pid && e.postData && e.postData.contents) { const b = JSON.parse(e.postData.contents); if (b && (b.type === 'payment' || /^payment/.test(b.action || ''))) pid = b.data && b.data.id; }
+    if (!pid) return { ok: true };
+    const pg = mp_('/v1/payments/' + encodeURIComponent(pid));
+    if (pg && pg.external_reference) revisarPago_(fila_(pg.external_reference));
+  } catch (err) { console.error('avisoMp_', err); }
+  return { ok: true };
+}
+
+/** Corre solo cada 15 minutos (instalar una vez con instalarAvisos). */
+function enviarAvisos() {
+  revisarPendientes_();
+  const sh = hoja_(); const filas = sh.getDataRange().getValues(); const ahora = new Date();
+  for (let i = 1; i < filas.length; i++) {
+    const f = filas[i]; if (f[C.estado] !== 'confirmada') continue;
+    const d = { ronda: f[C.ronda], tipo: f[C.tipo], nombre: f[C.nombre], email: f[C.mail], grabacion: f[C.grab], fecha: String(f[C.fRonda]), hora: String(f[C.hora]), fin: String(f[C.fin]), lugar: f[C.lugar], precio: f[C.precio], tz: f[C.tz] || '' };
+    const inicio = new Date(d.fecha + 'T' + d.hora + ':00-03:00');
+    const falta = (inicio - ahora) / 60000; // minutos
+    if (!f[C.avisoDia] && falta <= 24 * 60 && falta > MIN_ANTES) { enviar_('dia_antes', d); sh.getRange(i + 1, C.avisoDia + 1).setValue(new Date()); }
+    if (d.tipo === 'online' && !f[C.avisoPrevio] && falta <= MIN_ANTES && falta > -15) { enviar_('previo', d); sh.getRange(i + 1, C.avisoPrevio + 1).setValue(new Date()); }
+  }
+}
+/** Pagos pendientes y Mesa sin verificar de rondas que todavía no pasaron. */
+function revisarPendientes_() {
+  const sh = hoja_(); const filas = sh.getDataRange().getValues(); const ahora = new Date();
+  for (let i = 1; i < filas.length; i++) {
+    const f = filas[i];
+    if (PENDIENTES.indexOf(f[C.estado]) < 0 || !f[C.id]) continue;
+    if (new Date(String(f[C.fRonda]) + 'T23:59:00-03:00') < ahora) continue;
+    const x = { sh: sh, i: i + 1, f: f };
+    try {
+      if (f[C.mesa] === 'dijo que sí, sin verificar' && tieneMesa_(f[C.mail]) === true) { confirmar_(x, { gratis: true }); continue; }
+      revisarPago_(x);
+    } catch (err) { console.error('revisarPendientes_', err); }
+  }
+}
+function instalarAvisos() {
+  ScriptApp.getProjectTriggers().forEach(t => { if (t.getHandlerFunction() === 'enviarAvisos') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('enviarAvisos').timeBased().everyMinutes(15).create();
+}
+
+function enviar_(tipo, d) {
+  const m = mail_(tipo, d, LINKS[d.ronda] || '', SITIO);
+  MailApp.sendEmail({ to: d.email, subject: m.asunto, body: m.texto, htmlBody: m.html, name: 'Ronda de Tarot', replyTo: AVISOS_A });
+}
+
+// ===================== CONTENIDO DE LOS MAILS =====================
+const DIAS_ = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MESES_ = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function fechaLarga_(f) { const x = new Date(f + 'T12:00:00-03:00'); return DIAS_[x.getUTCDay()] + ' ' + x.getUTCDate() + ' de ' + MESES_[x.getUTCMonth()]; }
+const MESA_URL = 'https://mesadetarot.com';
+function mesa_(html, color) { return html.replace(/Mesa de Tarot/g, '<a href="' + MESA_URL + '" style="color:' + (color || 'inherit') + ';text-decoration:underline">Mesa de Tarot</a>'); }
+function wa_(html) { return html.replace(/([Ee])scribime por WhatsApp/g, '<a href="' + WA_MAZO + '" style="color:inherit;text-decoration:underline">$1scribime por WhatsApp</a>'); }
+function enl_(html, ls) { (ls || []).forEach(l => { html = html.replace(esc_(l.txt), '<a href="' + esc_(l.url) + '" style="color:inherit;text-decoration:underline">' + esc_(l.txt) + '</a>'); }); return html; }
+function esc_(s) { return String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function mail_(tipo, d, link, sitio) {
+  const on = d.tipo === 'online';
+  const nombre = String(d.nombre).trim().split(' ')[0];
+  const fecha = fechaLarga_(d.fecha);
+  let horario = d.hora + (d.fin ? ' a ' + d.fin : '') + ' hs.' + (on ? ' de Argentina' : '');
+  if (on && d.tz && !/^America\/(Argentina\/|Buenos_Aires)/.test(d.tz) && typeof Utilities !== 'undefined') {
+    try { horario += ' (' + Utilities.formatDate(new Date(d.fecha + 'T' + d.hora + ':00-03:00'), d.tz, 'HH:mm') + ' hs. en tu horario)'; } catch (e) {}
+  }
+  let enlaces = [];
+  const camOff = on && /^no/.test(d.grabacion || '');
+  let asunto, kicker, titulo, parrafos = [], boton = null, imagen = null, datos = true, cierre;
+
+  if (tipo === 'confirmacion') {
+    asunto = (d.cobro ? 'Tu lugar en la Ronda · ' : 'Estás en la Ronda · ') + fecha + ', ' + d.hora + ' hs.';
+    kicker = d.cobro ? 'Lugar reservado' : 'Inscripción confirmada';
+    titulo = d.cobro ? 'Te guardé el lugar, ' + nombre + '.' : 'Ya estás en la ronda, ' + nombre + '.';
+    if (on) { parrafos = [
+      'Necesitás tu mazo a mano. Cada una saca sus cartas y las dicta; yo las voy ubicando en la mesa compartida, para que todas las veamos. Al final te llevás la imagen de tu lectura.',
+      'Conectate desde una compu o una tablet, así las cartas se ven grandes. Desde el celular también se puede.',
+      'El día antes te mando el link de la videollamada.'
+    ];
+      if (d.cobro && d.pago && d.pago_usd) {
+        const afuera = d.pais === 'exterior';
+        parrafos.unshift(afuera ? 'Para confirmar tu lugar, pagá ' + d.monto_usd + ' con PayPal. Si estás en Argentina, podés pagar ' + d.monto + ' con Mercado Pago.' : 'Para confirmar tu lugar, pagá ' + d.monto + ' con Mercado Pago. Si estás en otro país, podés pagar ' + d.monto_usd + ' con PayPal.');
+        boton = afuera ? { texto: 'Pagar ' + d.monto_usd + ' con PayPal', url: d.pago_usd } : { texto: 'Pagar ' + d.monto + ' con Mercado Pago', url: d.pago };
+        enlaces = afuera ? [{ txt: d.monto + ' con Mercado Pago', url: d.pago }] : [{ txt: d.monto_usd + ' con PayPal', url: d.pago_usd }];
+      } else if (d.cobro) {
+        parrafos.unshift('Para confirmar tu lugar, pagá los ' + d.monto + (d.pago ? ' con Mercado Pago.' : '. Te escribo por WhatsApp para pasarte cómo pagarlos.'));
+        if (d.pago) boton = { texto: 'Pagar ' + d.monto, url: d.pago };
+      } else if (d.gratis) {
+        parrafos.unshift('Como tenés Mesa de Tarot, la ronda es sin cargo: ya lo verificamos con el mail de tu cuenta.');
+      }
+      if (d.cobro && d.conmesa && d.mesa === false) parrafos.splice(1, 0, 'No encontramos una compra de Mesa de Tarot con este mail, así que la ronda se paga. Si la compraste con otro mail, respondé este mail y lo revisamos.');
+      if (d.cobro && d.conmesa && d.mesa !== false && !d.gratis) { parrafos[0] = 'Todavía no pudimos verificar tu Mesa de Tarot. Lo revisamos solo en un rato: si la tenés, te confirmamos el lugar sin cargo. Si no, te avisamos para que pagues.'; boton = null; enlaces = []; }
+    }
+    else {
+      parrafos = [];
+      if (d.cobro) {
+        parrafos.push('Para confirmar tu lugar, dejá la seña de ' + d.monto + (d.pago ? ' con Mercado Pago.' : '. Te escribo por WhatsApp para pasarte cómo pagarla.') + ' El resto se abona en el lugar.');
+        if (d.pago) boton = { texto: 'Pagar la seña de ' + d.monto, url: d.pago };
+      }
+      parrafos.push(d.sinmazo ? 'Me contaste que no tenés mazo: no te preocupes, en la ronda te presto uno.' : 'Traé tu mazo; si no tenés, avisame y te presto uno.');
+      parrafos.push('El día antes te escribo para recordártelo.');
+    }
+    const iM = on ? parrafos.findIndex(p => p.indexOf('Necesitás tu mazo') === 0) + 1 : 1;
+    if (on && d.sinmazo) parrafos.splice(iM, 0, 'Me contaste que no tenés mazo: te escribo para ayudarte a elegir uno. Si querés adelantarte, escribime por WhatsApp.');
+    else if (on) parrafos.splice(iM, 0, '¿No tenés mazo y no sabés cuál comprar? Escribime por WhatsApp y te ayudo a elegir.');
+    cierre = 'Si no podés venir, respondé este mail así le doy el lugar a otra persona.';
+  } else if (tipo === 'dia_antes') {
+    asunto = on ? 'Mañana es la Ronda · acá está el link' : 'Mañana es la Ronda · te espero';
+    kicker = 'Mañana';
+    titulo = on ? 'Mañana nos vemos en la ronda.' : 'Mañana nos vemos en la ronda.';
+    if (on) {
+      parrafos = ['Entrá unos minutos antes para probar la cámara y el audio. Tené tu mazo a mano.'];
+      if (link) boton = { texto: 'Entrar a la videollamada', url: link };
+      parrafos.push(camOff ? 'Elegiste participar con la cámara apagada: no vamos a usar tu imagen ni tu voz.' : 'La ronda se graba para mostrar cómo funciona. Si preferís no aparecer, apagá la cámara y no usamos tu imagen ni tu voz.');
+    } else {
+      parrafos = ['Traé tu mazo. Nos encontramos ahí.'];
+    }
+    cierre = 'Si al final no podés, respondé este mail.';
+  } else if (tipo === 'pago') {
+    const sena = d.cobro === 'sena', p = d.pagado || {};
+    asunto = 'Tu lugar en la Ronda está confirmado · ' + fecha + ', ' + d.hora + ' hs.';
+    kicker = p.gratis ? 'Mesa de Tarot verificada' : (sena ? 'Seña recibida' : 'Pago recibido');
+    titulo = 'Listo, ' + nombre + ': tu lugar está confirmado.';
+    parrafos = [p.gratis ? 'Verificamos que tenés Mesa de Tarot: la ronda es sin cargo.' : 'Recibimos tu ' + (sena ? 'seña' : 'pago') + ' (' + p.medio + ', ' + p.monto + ').' + (sena ? ' El resto se abona en el lugar.' : '')];
+    parrafos.push(on ? 'El día antes te mando el link de la videollamada. Tené tu mazo a mano.' : 'El día antes te escribo para recordártelo.');
+    cierre = 'Si no podés venir, respondé este mail.';
+  } else if (tipo === 'guia') {
+    asunto = 'Tu mini guía para la Ronda';
+    kicker = 'Para tu primera Ronda';
+    titulo = 'Una mini guía para llegar con lo básico.';
+    parrafos = [
+      'Como recién empezás, te armé una mini guía del Tarot de Marsella: cómo está armado el mazo, los arcanos mayores, los menores y los cuatro palos. Se lee en cinco minutos.',
+      'No hace falta saberla de memoria: lo demás se aprende tirando, en la Ronda.'
+    ];
+    boton = { texto: 'Leer la mini guía', url: sitio + '/guia/' };
+    imagen = { src: sitio + '/guia/img/ases-mail.jpg', alt: 'Los cuatro ases del Tarot de Marsella: Copas, Oros, Espadas y Bastos' };
+    datos = false;
+    cierre = '¿Te quedó alguna duda? Respondé este mail.';
+  } else { // previo
+    asunto = 'En ' + MIN_ANTES + ' minutos empieza la Ronda';
+    kicker = 'En ' + MIN_ANTES + ' minutos';
+    titulo = 'Ya casi empezamos.';
+    parrafos = ['Tené tu mazo a mano. Te espero en la videollamada.'];
+    if (link) boton = { texto: 'Entrar a la videollamada', url: link };
+    datos = false;
+    cierre = '';
+  }
+
+  const filas = [['Cuándo', fecha.charAt(0).toUpperCase() + fecha.slice(1) + ' · ' + horario], ['Dónde', d.lugar], ['Valor', d.precio]];
+
+  // ---------- texto plano ----------
+  let t = 'RONDA DE TAROT' + (on ? ' · ONLINE' : '') + '\n\n' + titulo + '\n\n';
+  if (datos) t += filas.map(r => r[0] + ': ' + r[1]).join('\n') + '\n\n';
+  if (boton) t += boton.texto + ': ' + boton.url + '\n\n';
+  t += parrafos.join('\n\n') + '\n\n' + (cierre ? cierre + '\n\n' : '') + 'Lorena\n' + INSTAGRAM;
+  if (on) t += '\n\nLa ronda se arma en Mesa de Tarot, la mesa digital para talleres y consultas.';
+  enlaces.forEach(l => { t = t.replace(l.txt, l.txt + ' (' + l.url + ')'); });
+  t = t.replace(/([Ee])scribime por WhatsApp/g, '$1scribime por WhatsApp (wa.me/5491131042216)');
+  t = t.replace(/Mesa de Tarot/g, 'Mesa de Tarot (' + MESA_URL.replace('https://', '') + ')');
+
+  // ---------- HTML ----------
+  const fondo = on ? '#E9CEC4' : '#D9D1E8';
+  const tinta = on ? '#3A1A27' : '#140A5C';
+  const SANS = "Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif";
+  const TW = "'Special Elite','Courier New',Courier,monospace";
+  let h = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;900&family=Special+Elite&display=swap" rel="stylesheet"></head>'
+    + '<body style="margin:0;padding:0;background:' + fondo + '">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' + fondo + '" style="background:' + fondo + '"><tr><td align="center" style="padding:28px 14px 36px">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">'
+    // cabecera
+    + '<tr><td style="padding:0 6px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+    + '<td valign="top"><div style="font-family:' + SANS + ';font-weight:900;font-size:58px;line-height:.95;letter-spacing:-2px;color:#140A5C">RONDA</div>'
+    + '<div style="font-family:' + TW + ';font-size:22px;letter-spacing:3px;color:#140A5C;margin-top:6px">DE TAROT</div>'
+    + (on ? '<div style="display:inline-block;margin-top:12px;background:#140A5C;color:#F3E3DC;font-family:' + SANS + ';font-weight:900;font-size:20px;padding:6px 12px;letter-spacing:.5px">ONLINE</div>' : '')
+    + '</td><td width="112" valign="top" align="right"><img src="' + sitio + '/the-round.png" width="104" alt="Carta de la Ronda de Tarot" style="display:block;width:104px;height:auto;border:0"></td>'
+    + '</tr></table></td></tr>'
+    // papel
+    + '<tr><td style="padding:22px 0 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#EFE6D3" style="background:#EFE6D3;box-shadow:3px 6px 16px rgba(40,20,30,.18)"><tr><td style="padding:28px 28px 26px;color:' + tinta + '">'
+    + '<div style="font-family:' + TW + ';font-size:13px;letter-spacing:2px;text-transform:uppercase;color:' + tinta + ';opacity:.8">' + esc_(kicker) + '</div>'
+    + '<div style="font-family:' + SANS + ';font-weight:900;font-size:28px;line-height:1.12;letter-spacing:-.5px;margin:8px 0 18px;color:#140A5C">' + esc_(titulo) + '</div>';
+  if (datos) {
+    h += '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1.5px dashed ' + tinta + ';border-bottom:1.5px dashed ' + tinta + ';margin-bottom:18px">';
+    filas.forEach(r => { h += '<tr><td width="74" valign="top" style="padding:9px 0;font-family:' + TW + ';font-size:13px;letter-spacing:1px;text-transform:uppercase">' + r[0] + '</td><td style="padding:9px 0;font-family:' + SANS + ';font-size:16px;line-height:1.45;font-weight:700">' + mesa_(esc_(r[1])) + '</td></tr>'; });
+    h += '</table>';
+  }
+  if (imagen) h += '<img src="' + imagen.src + '" width="504" alt="' + esc_(imagen.alt) + '" style="display:block;width:100%;max-width:504px;height:auto;border:0;margin:0 0 16px">';
+  if (boton) h += '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 18px"><tr><td bgcolor="#140A5C" style="background:#140A5C"><a href="' + esc_(boton.url) + '" style="display:inline-block;padding:15px 24px;font-family:' + SANS + ';font-weight:900;font-size:16px;letter-spacing:.5px;text-transform:uppercase;color:#F9F5EE;text-decoration:none">' + esc_(boton.texto) + '</a></td></tr></table>';
+  parrafos.forEach(p => { h += '<p style="margin:0 0 12px;font-family:' + SANS + ';font-size:16px;line-height:1.55">' + enl_(wa_(mesa_(esc_(p))), enlaces) + '</p>'; });
+  if (cierre) h += '<p style="margin:16px 0 0;font-family:' + SANS + ';font-size:14px;line-height:1.5;opacity:.85">' + esc_(cierre) + '</p>';
+  h += '</td></tr></table></td></tr>'
+    // firma
+    + '<tr><td style="padding:22px 6px 0;font-family:' + SANS + ';color:' + tinta + '"><div style="font-weight:900;font-size:18px">Lorena</div><div style="font-size:14px;margin-top:2px">' + INSTAGRAM + '</div>'
+    + (on ? '<div style="font-size:13px;margin-top:14px;opacity:.8">' + mesa_('La ronda se arma en Mesa de Tarot, la mesa digital para talleres y consultas.') + '</div>' : '')
+    + '</td></tr></table></td></tr></table></body></html>';
+  return { asunto: asunto, texto: t, html: h };
+}
+
+// ===================== PANEL DE ADMIN =====================
+// Se abre desde la URL /dev del proyecto con ?admin=1 (Google pide entrar con la cuenta de Lorena).
+function esLo_() {
+  try { return String(Session.getActiveUser().getEmail() || '').toLowerCase() === AVISOS_A; } catch (e) { return false; }
+}
+function soloLo_() { if (!esLo_()) throw new Error('Sin acceso'); }
+function panel_() {
+  if (!esLo_()) return HtmlService.createHtmlOutput('<p style="font-family:sans-serif;padding:24px">No tenés acceso a esta página.</p>').setTitle('Ronda de Tarot');
+  return HtmlService.createHtmlOutput(PANEL_HTML).setTitle('Ronda de Tarot · admin').addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+function inscripta_(f) {
+  return { id: String(f[C.id]), fecha: f[C.fecha] instanceof Date ? f[C.fecha].toISOString() : String(f[C.fecha]), nombre: String(f[C.nombre]), mail: String(f[C.mail]), wa: String(f[C.wa]).replace(/^'/, ''),
+    grab: String(f[C.grab] || ''), estado: String(f[C.estado] || ''), pago: String(f[C.pago] || ''), mazo: String(f[C.mazo] || ''), mesa: String(f[C.mesa] || ''),
+    nivel: String(f[C.nivel] || ''), tz: String(f[C.tz] || ''), pais: String(f[C.pais] || '') };
+}
+function adminDatos() {
+  soloLo_();
+  const sh = hoja_(); const filas = sh.getDataRange().getValues();
+  // inscripciones viejas sin ID: se les asigna uno
+  for (let i = 1; i < filas.length; i++) if (!filas[i][C.id]) { filas[i][C.id] = Utilities.getUuid().replace(/-/g, '').slice(0, 20); sh.getRange(i + 1, C.id + 1).setValue(filas[i][C.id]); }
+  const lista = rondas_().map(r => Object.assign({}, r, { inscriptas: [] }));
+  const porId = {}; lista.forEach(r => porId[r.id] = r);
+  filas.slice(1).forEach(f => {
+    let r = porId[f[C.ronda]];
+    if (!r) { r = porId[f[C.ronda]] = { id: String(f[C.ronda]), tipo: String(f[C.tipo]), fecha: String(f[C.fRonda]), hora: String(f[C.hora]), fin: String(f[C.fin]), lugar: String(f[C.lugar]), inscriptas: [] }; lista.push(r); }
+    r.inscriptas.push(inscripta_(f));
+  });
+  return { rondas: lista, cfg: { mp: !!prop_('MP_TOKEN'), pp: !!(prop_('PAYPAL_ID') && prop_('PAYPAL_SECRETO')), mesa: !!prop_('RONDA_CLAVE') } };
+}
+function adminEstado(id, estado) {
+  soloLo_();
+  if (['confirmada', 'seña pendiente', 'pago pendiente', 'cancelada'].indexOf(estado) < 0) throw new Error('Estado inválido');
+  const x = fila_(id); if (!x) throw new Error('No encontré la inscripción');
+  x.sh.getRange(x.i, C.estado + 1).setValue(estado);
+  if (estado === 'confirmada' && /^pendiente/.test(String(x.f[C.pago]))) x.sh.getRange(x.i, C.pago + 1).setValue(String(x.f[C.pago]) + ' · confirmada a mano');
+  const f = fila_(id).f; return { estado: f[C.estado], pago: String(f[C.pago]) };
+}
+function adminRevisar(id) {
+  soloLo_();
+  const x = fila_(id); if (!x) throw new Error('No encontré la inscripción');
+  const pago = revisarPago_(x);
+  const f = fila_(id).f; return { encontrado: !!pago, estado: f[C.estado], pago: String(f[C.pago]) };
+}
+function adminMesa(id) {
+  soloLo_();
+  const x = fila_(id); if (!x) throw new Error('No encontré la inscripción');
+  const tiene = tieneMesa_(x.f[C.mail]);
+  if (tiene === true && PENDIENTES.indexOf(x.f[C.estado]) >= 0) confirmar_(x, { gratis: true });
+  else if (tiene === true) x.sh.getRange(x.i, C.mesa + 1).setValue('sí (verificado)');
+  else if (tiene === false && x.f[C.mesa]) x.sh.getRange(x.i, C.mesa + 1).setValue('dijo que sí, no encontrado');
+  const f = fila_(id).f; return { tiene: tiene, estado: f[C.estado], mesa: String(f[C.mesa]), pago: String(f[C.pago]) };
+}
+
+const PANEL_HTML = "<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Ronda de Tarot · admin</title>\n<link href=\"https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Special+Elite&display=swap\" rel=\"stylesheet\">\n<style>\n:root{--marino:#140a5c;--papel:#efe6d3;--crema:#f7f2e8;--rosa:#e9cec4;--vino:#3a1a27;--violeta:#d9d1e8;--dorado:#b8862f;--verde:#2f6b3a;--rojo:#9b1c1c;--gris:#6b6478}\n*{box-sizing:border-box;margin:0;padding:0}\nbody{font-family:Archivo,system-ui,sans-serif;background:var(--crema);color:var(--marino);font-size:15px;line-height:1.4}\n.tw{font-family:'Special Elite',ui-monospace,monospace;letter-spacing:.04em}\nheader{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:24px 24px 18px;max-width:1180px;margin:0 auto}\nheader h1{font-weight:900;font-size:40px;line-height:.9;letter-spacing:-.03em}\nheader h1 small{display:block;font-family:'Special Elite',monospace;font-weight:400;font-size:16px;letter-spacing:.2em;margin-top:6px}\n.cfg{display:flex;gap:8px;flex-wrap:wrap;font-size:13px}\n.cfg span{padding:5px 9px;border:1.5px solid currentColor;border-radius:2px}\n.cfg .si{color:var(--verde)} .cfg .no{color:var(--rojo)}\nmain{max-width:1180px;margin:0 auto;padding:0 24px 60px;display:grid;gap:22px}\n.barra{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:14px}\n.barra label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}\nbutton{font:800 13px Archivo,sans-serif;letter-spacing:.03em;text-transform:uppercase;border:1.5px solid var(--marino);background:transparent;color:var(--marino);padding:7px 11px;border-radius:2px;cursor:pointer;white-space:nowrap}\nbutton.lleno{background:var(--marino);color:var(--crema)}\nbutton:disabled{opacity:.45;cursor:default}\n.ronda{background:var(--papel);box-shadow:3px 6px 18px rgba(20,10,60,.12);border-radius:2px}\n.ronda.online{background:var(--rosa);color:var(--vino)}\n.ronda.online button{border-color:var(--vino);color:var(--vino)}\n.cab{display:grid;grid-template-columns:86px 1fr auto;gap:18px;align-items:center;padding:18px 20px}\n.fecha{text-align:center;line-height:1}\n.fecha .num{font-weight:900;font-size:44px;letter-spacing:-.03em}\n.fecha .dm{font-size:13px;text-transform:uppercase}\n.cab h2{font-weight:900;font-size:21px;text-transform:uppercase;letter-spacing:-.01em}\n.tag{display:inline-block;font-weight:800;font-size:12px;padding:3px 8px;margin-left:6px;vertical-align:middle;background:var(--marino);color:var(--papel);letter-spacing:.04em}\n.meta{font-size:14px;margin-top:4px}\n.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}\n.chip{font-size:13px;font-weight:700;padding:4px 9px;background:rgba(255,255,255,.55);border-radius:2px}\n.acc{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}\ntable{width:100%;border-collapse:collapse;background:rgba(255,255,255,.6)}\nth{text-align:left;font-family:'Special Elite',monospace;font-weight:400;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:9px 12px;border-bottom:1.5px dashed currentColor}\ntd{padding:11px 12px;border-bottom:1px solid rgba(20,10,60,.12);vertical-align:top}\ntr.cancelada td{opacity:.45}\n.nom{font-weight:800;font-size:15.5px}\n.flags{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}\n.flag{font-size:11.5px;font-weight:700;padding:2px 6px;border:1px solid currentColor;border-radius:2px}\n.flag.alerta{color:var(--rojo)} .flag.ok{color:var(--verde)}\ntd a{color:inherit}\n.contacto div{white-space:nowrap}\nselect{font:700 13.5px Archivo,sans-serif;padding:6px 8px;border:1.5px solid currentColor;background:#fff;color:inherit;border-radius:2px}\nselect.confirmada{color:var(--verde)} select.pendiente{color:var(--dorado)} select.cancelada{color:var(--gris)}\n.pago{font-size:13px;max-width:260px}\n.vacio{padding:18px 20px;font-family:'Special Elite',monospace}\n.cuando{font-size:12px;color:var(--gris)}\n#aviso{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--marino);color:var(--crema);padding:10px 16px;font-weight:700;border-radius:2px;display:none;max-width:90vw}\ndetails.pasadas>summary{cursor:pointer;font-weight:800;text-transform:uppercase;font-size:14px;padding:6px 0}\ndetails.pasadas[open]>summary{margin-bottom:14px}\n.cargando{padding:40px 24px;font-family:'Special Elite',monospace;font-size:18px}\n@media (max-width:820px){\n  header h1{font-size:32px}\n  .cab{grid-template-columns:64px 1fr;gap:12px;padding:16px}\n  .cab .acc{grid-column:1/-1;justify-content:flex-start}\n  .fecha .num{font-size:36px}\n  table,thead,tbody,tr,td{display:block;width:100%}\n  thead{display:none}\n  tr{padding:12px 16px;border-bottom:1.5px dashed rgba(20,10,60,.25)}\n  td{border:0;padding:4px 0}\n  td[data-t]::before{content:attr(data-t);display:block;font-family:'Special Elite',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}\n  .pago{max-width:none}\n}\n</style>\n</head>\n<body>\n<header>\n  <h1>RONDA<small>DE TAROT · ADMIN</small></h1>\n  <div class=\"cfg\" id=\"cfg\"></div>\n</header>\n<main id=\"main\"><div class=\"cargando\">Cargando inscripciones…</div></main>\n<div id=\"aviso\" role=\"status\"></div>\n<script>\nvar DATOS = null, VER_CANC = false;\nvar DIAS = ['dom','lun','mar','mié','jue','vie','sáb'], MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];\nfunction esc(s){return String(s==null?'':s).replace(/[&<>\"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]})}\nfunction aviso(t){var a=document.getElementById('aviso');a.textContent=t;a.style.display='block';clearTimeout(aviso._t);aviso._t=setTimeout(function(){a.style.display='none'},3200)}\nfunction llamar(fn,args,ok){var r=google.script.run.withSuccessHandler(ok).withFailureHandler(function(e){aviso('Error: '+(e&&e.message||e))});r[fn].apply(r,args||[])}\nfunction cargar(){llamar('adminDatos',[],function(d){DATOS=d;pintar()})}\nfunction claseEstado(e){return e==='confirmada'?'confirmada':e==='cancelada'?'cancelada':'pendiente'}\nfunction wa(n){var d=String(n||'').replace(/\\D/g,'');if(!d)return '';if(d.indexOf('54')!==0&&d.length<=11)d='54'+d.replace(/^0/,'');return 'https://wa.me/'+d}\nfunction fechaIns(iso){if(!iso)return '';var x=new Date(iso);return x.getDate()+'/'+(x.getMonth()+1)+' '+String(x.getHours()).padStart(2,'0')+':'+String(x.getMinutes()).padStart(2,'0')}\nfunction pintarRonda(r){\n  var d=new Date(r.fecha+'T12:00:00-03:00'), on=r.tipo==='online';\n  var todas=r.inscriptas, act=todas.filter(function(p){return p.estado!=='cancelada'});\n  var conf=act.filter(function(p){return p.estado==='confirmada'}).length, pend=act.length-conf;\n  var ars=0,usd=0; act.forEach(function(p){var m=/(Mercado Pago|PayPal) · (US\\$ |\\$)?([\\d.,]+)/.exec(p.pago||'');if(m){if(m[1]==='PayPal')usd+=Number(m[3].replace(',','.'));else ars+=Number(m[3].replace(/\\./g,''))}});\n  var lista=VER_CANC?todas:act;\n  var h='<section class=\"ronda '+(on?'online':'presencial')+'\"><div class=\"cab\"><div class=\"fecha\"><div class=\"dm\">'+DIAS[d.getDay()]+'</div><div class=\"num\">'+d.getDate()+'</div><div class=\"dm\">'+MESES[d.getMonth()]+'</div></div>'\n    +'<div><h2>Ronda de Tarot<span class=\"tag\">'+(on?'ONLINE':'PRESENCIAL')+'</span></h2><div class=\"meta tw\">'+esc(r.hora)+(r.fin?' a '+esc(r.fin):'')+' hs. · '+esc(r.lugar||'')+'</div>'\n    +'<div class=\"chips\"><span class=\"chip\">'+act.length+(r.cupos?' / '+r.cupos:'')+' lugares</span><span class=\"chip\">'+conf+' confirmada'+(conf===1?'':'s')+'</span>'+(pend?'<span class=\"chip\">'+pend+' pendiente'+(pend===1?'':'s')+'</span>':'')\n    +(ars||usd?'<span class=\"chip\">Cobrado: '+[ars?'$'+ars.toLocaleString('es-AR'):'',usd?'US$ '+usd:''].filter(String).join(' + ')+'</span>':'')+'</div></div>'\n    +'<div class=\"acc\"><button onclick=\"copiar(\\''+esc(r.id)+'\\',\\'mail\\')\">Copiar mails</button><button onclick=\"copiar(\\''+esc(r.id)+'\\',\\'wa\\')\">Copiar WhatsApp</button></div></div>';\n  if(!lista.length){h+='<div class=\"vacio\">Todavía no hay inscripciones.</div></section>';return h}\n  h+='<table><thead><tr><th>Nombre</th><th>Contacto</th><th>Estado</th><th>Pago</th><th></th></tr></thead><tbody>';\n  lista.forEach(function(p){\n    var fl=[];\n    if(p.nivel==='principiante')fl.push('<span class=\"flag\">Principiante</span>');\n    if(p.mazo)fl.push('<span class=\"flag alerta\">'+(on?'Necesita ayuda con el mazo':'Hay que prestarle mazo')+'</span>');\n    if(/verificado/.test(p.mesa))fl.push('<span class=\"flag ok\">Tiene Mesa ✓</span>');\n    else if(p.mesa)fl.push('<span class=\"flag alerta\">Mesa: '+esc(p.mesa)+'</span>');\n    if(p.pais==='exterior')fl.push('<span class=\"flag\">Exterior'+(p.tz?' · '+esc(p.tz.split('/').pop().replace(/_/g,' ')):'')+'</span>');\n    if(on&&/^no/.test(p.grab||''))fl.push('<span class=\"flag\">Cámara apagada</span>');\n    var ce=claseEstado(p.estado);\n    var opts=['confirmada','seña pendiente','pago pendiente','cancelada'];if(opts.indexOf(p.estado)<0)opts.unshift(p.estado);\n    var link=wa(p.wa);\n    h+='<tr class=\"'+ce+'\"><td data-t=\"Nombre\"><div class=\"nom\">'+esc(p.nombre)+'</div><div class=\"cuando\">Se anotó el '+fechaIns(p.fecha)+'</div>'+(fl.length?'<div class=\"flags\">'+fl.join('')+'</div>':'')+'</td>'\n      +'<td data-t=\"Contacto\" class=\"contacto\"><div><a href=\"mailto:'+esc(p.mail)+'\">'+esc(p.mail)+'</a></div><div>'+(link?'<a href=\"'+link+'\" target=\"_blank\" rel=\"noopener\">'+esc(p.wa)+'</a>':esc(p.wa))+'</div></td>'\n      +'<td data-t=\"Estado\"><select class=\"'+ce+'\" onchange=\"cambiarEstado(\\''+esc(p.id)+'\\',this)\">'+opts.map(function(o){return '<option'+(o===p.estado?' selected':'')+'>'+esc(o)+'</option>'}).join('')+'</select></td>'\n      +'<td data-t=\"Pago\" class=\"pago\">'+esc(p.pago||'—')+'</td>'\n      +'<td><div class=\"acc\" style=\"justify-content:flex-start\">'+(/pendiente/.test(p.estado)?'<button onclick=\"revisar(\\''+esc(p.id)+'\\',this)\">Revisar pago</button>':'')\n      +(on&&r.gratis_mesa&&p.mesa&&!/verificado/.test(p.mesa)&&p.estado!=='cancelada'?'<button onclick=\"verMesa(\\''+esc(p.id)+'\\',this)\">Verificar Mesa</button>':'')+'</div></td></tr>';\n  });\n  return h+'</tbody></table></section>';\n}\nfunction pintar(){\n  var c=DATOS.cfg||{};\n  document.getElementById('cfg').innerHTML=[['Mercado Pago',c.mp],['PayPal',c.pp],['Verificación de Mesa',c.mesa]].map(function(x){return '<span class=\"'+(x[1]?'si':'no')+'\">'+x[0]+(x[1]?' ✓':': sin conectar')+'</span>'}).join('');\n  var hoy=new Date();hoy.setHours(0,0,0,0);\n  var prox=DATOS.rondas.filter(function(r){return new Date(r.fecha+'T23:59:00-03:00')>=hoy}).sort(function(a,b){return a.fecha.localeCompare(b.fecha)});\n  var pas=DATOS.rondas.filter(function(r){return new Date(r.fecha+'T23:59:00-03:00')<hoy}).sort(function(a,b){return b.fecha.localeCompare(a.fecha)});\n  var h='<div class=\"barra\"><label><input type=\"checkbox\" '+(VER_CANC?'checked':'')+' onchange=\"VER_CANC=this.checked;pintar()\"> Mostrar canceladas</label><button onclick=\"cargar();aviso(\\'Actualizando…\\')\">Actualizar</button></div>';\n  h+=prox.length?prox.map(pintarRonda).join(''):'<div class=\"vacio\">No hay rondas próximas.</div>';\n  if(pas.length)h+='<details class=\"pasadas\"><summary>Rondas pasadas ('+pas.length+')</summary><div style=\"display:grid;gap:22px\">'+pas.map(pintarRonda).join('')+'</div></details>';\n  document.getElementById('main').innerHTML=h;\n}\nfunction buscar(id){var p=null;DATOS.rondas.forEach(function(r){r.inscriptas.forEach(function(x){if(x.id===id)p=x})});return p}\nfunction copiar(rid,que){\n  var r=DATOS.rondas.filter(function(x){return x.id===rid})[0];\n  var v=r.inscriptas.filter(function(p){return p.estado!=='cancelada'}).map(function(p){return que==='mail'?p.mail:p.nombre+' '+p.wa}).filter(String);\n  var t=que==='mail'?v.join(', '):v.join('\\n');\n  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){aviso('Copiado: '+v.length)},function(){prompt('Copiá:',t)});\n}\nfunction cambiarEstado(id,sel){\n  var p=buscar(id),nuevo=sel.value;\n  if(nuevo==='cancelada'&&!confirm('¿Cancelar la inscripción de '+p.nombre+'? Libera su lugar.')){sel.value=p.estado;return}\n  sel.disabled=true;\n  llamar('adminEstado',[id,nuevo],function(res){p.estado=res.estado;p.pago=res.pago;pintar();aviso('Listo: '+res.estado)});\n}\nfunction revisar(id,b){b.disabled=true;b.textContent='Revisando…';llamar('adminRevisar',[id],function(res){var p=buscar(id);p.estado=res.estado;p.pago=res.pago;pintar();aviso(res.encontrado?'Pago acreditado':'Todavía no hay un pago acreditado')})}\nfunction verMesa(id,b){b.disabled=true;b.textContent='Verificando…';llamar('adminMesa',[id],function(res){var p=buscar(id);p.estado=res.estado;p.mesa=res.mesa;p.pago=res.pago;pintar();aviso(res.tiene===true?'Tiene Mesa: queda sin cargo':res.tiene===false?'No tiene Mesa con ese mail':'No se pudo verificar ahora')})}\ncargar();\n</script>\n</body>\n</html>\n";
