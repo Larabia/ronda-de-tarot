@@ -137,7 +137,7 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
       <details><summary>¿Cómo funciona la ronda online?</summary><p>Es por videollamada. Cada una saca sus cartas de su mazo y las dicta; yo las voy ubicando en una mesa compartida, en <a href="https://mesadetarot.com" target="_blank" rel="noopener">Mesa de Tarot</a>, para que todas las veamos. No tenés que instalar nada. Al final te llevás la imagen de tu lectura.</p></details>
       <details><summary>¿Desde dónde me conecto?</summary><p>Lo mejor es una compu o una tablet, así las cartas se ven grandes. Desde el celular también se puede. El día antes te llega el link de la videollamada.</p></details>
       <details><summary>¿La ronda online se graba?</summary><p>Sí, para mostrar cómo funciona. Si preferís no aparecer, participás con la cámara apagada y no usamos tu imagen ni tu voz.</p></details>
-      <details><summary>¿Cuánto cuesta?</summary><p>La presencial cuesta $35.000 e incluye una consumición: para inscribirte dejás una seña de $5.000 y el resto se abona en el lugar. La online cuesta $15.000 y se paga al inscribirte. Si tenés <a href="https://mesadetarot.com" target="_blank" rel="noopener">Mesa de Tarot</a>, las rondas online son sin cargo.</p></details>
+      <details><summary>¿Cuánto cuesta?</summary><p>La presencial cuesta $35.000 e incluye una bebida a elección de Filomena (café, té, limonada o un exprimido recién hecho): para inscribirte dejás una seña de $5.000 y el resto se abona en el lugar. La online cuesta $15.000 y se paga al inscribirte. Si tenés <a href="https://mesadetarot.com" target="_blank" rel="noopener">Mesa de Tarot</a>, las rondas online son sin cargo.</p></details>
       <details><summary>¿Y si después no puedo ir?</summary><p>Avisanos respondiendo el mail de confirmación, así le damos el lugar a otra persona.</p></details>
     </div>
   </section>
@@ -171,7 +171,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVMU9harMPmKlwl0jIS
 const RONDAS = [
   { id:"2026-11-21-filomena", tipo:"presencial", fecha:"2026-11-21", hora:"13:00", fin:"16:00",
     lugar:"Filomena Café · Av. Perú 21, Pilcaniyeu, Río Negro",
-    precio:"$35.000 por persona (incluye una consumición)",
+    precio:"$35.000 por persona. Incluye una bebida a elección para acompañar la ronda: café, té, limonada o un exprimido recién hecho",
     cobro:"sena", monto:"$5.000", pago:"https://mpago.la/13GX7P4", cupos:10, a_cargo:"@lorenabroda y @shuli.magiapalabra" },
   { id:"2026-11-25-online", tipo:"online", fecha:"2026-11-25", hora:"19:00", fin:"20:30",
     lugar:"Por videollamada, en Mesa de Tarot",
@@ -199,6 +199,7 @@ function render(){
       <div class="info"><h3>Ronda de Tarot <span class="tag">${r.tipo==="online"?"ONLINE":"PRESENCIAL"}</span></h3>
         <p class="meta">${esc(r.hora)}${r.fin?" a "+esc(r.fin):""} hs. · ${mesa(esc(r.lugar))}</p>
         <p>${mesa(esc(r.precio))}</p>
+        ${r.tipo==="presencial"?`<p>Si no tenés mazo, te prestamos uno.</p>`:""}
         ${r.cobro==="sena"?`<p>Para inscribirte dejás una seña de ${esc(r.monto)}; el resto se abona en el lugar.</p>`:r.cobro==="total"?`<p>Se paga al inscribirte.</p>`:""}
         ${r.tipo==="online"?`<p>Necesitás tu mazo a mano. ¿No tenés y no sabés cuál comprar? <a href="${WA_MAZO}" target="_blank" rel="noopener" style="color:inherit">Escribinos y te ayudamos a elegir</a>.</p>`:""}
         ${r.a_cargo?`<p>A cargo: ${esc(r.a_cargo)}</p>`:""}
@@ -217,7 +218,7 @@ function abrir(id){
     <label for="nombre">Nombre</label><input id="nombre" name="nombre" type="text" autocomplete="name" required>
     <label for="email">Mail</label><input id="email" name="email" type="email" autocomplete="email" required>
     <label for="whatsapp">WhatsApp</label><input id="whatsapp" name="whatsapp" type="tel" autocomplete="tel" placeholder="+54 9 ..." required>
-    <label class="check"><input type="checkbox" name="sinmazo"> No tengo mazo y quiero ayuda para elegir uno.</label>
+    <label class="check"><input type="checkbox" name="sinmazo"> ${on?"No tengo mazo y quiero ayuda para elegir uno.":"No tengo mazo: necesito que me presten uno."}</label>
     ${r.gratis_mesa?`<label class="check"><input type="checkbox" name="conmesa" onchange="actualizarBoton()"> Tengo Mesa de Tarot: entro sin cargo. Usá el mismo mail de tu cuenta, así lo chequeamos.</label>`:""}
     ${on?`<label class="check"><input type="checkbox" name="grabacion"> Acepto que la ronda se grabe para mostrar cómo funciona. Si no lo marcás, participás con la cámara apagada y no usamos tu imagen ni tu voz.</label>
     <p class="nota">Necesitás tu mazo a mano. Cada una saca sus cartas y yo las voy ubicando en la mesa compartida, para que todas las vean. Te conviene conectarte desde una compu o tablet, así las cartas se ven grandes. El día antes te llega el link de la videollamada.</p>`:""}
