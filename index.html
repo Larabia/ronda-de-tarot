@@ -131,7 +131,7 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
   <section class="sec" id="preguntas">
     <h2>Preguntas frecuentes</h2>
     <div class="faq">
-      <details><summary>¿Necesito saber tarot?</summary><p>No. La ronda es para todos los niveles: se aprende haciendo.</p></details>
+      <details><summary>¿Necesito saber tarot?</summary><p>No. La ronda es para todos los niveles: se aprende haciendo. Si es tu primera vez, al inscribirte te mandamos una <a href="/guia/">mini guía</a> con lo básico.</p></details>
       <details><summary>¿Con qué mazo se trabaja?</summary><p>Con el tuyo: Marsella, Rider o el que uses. Si no tenés y no sabés cuál comprar, <a href="https://wa.me/5491131042216?text=Hola%20Lorena%2C%20quiero%20ayuda%20para%20elegir%20un%20mazo%20de%20tarot" target="_blank" rel="noopener">escribinos y te ayudamos a elegir</a>. En las presenciales, si no tenés, te prestamos uno.</p></details>
       <details><summary>¿Cómo es una ronda?</summary><p>Es una experiencia guiada: vos le leés a alguien y alguien te lee a vos. Vamos de a una, y entre todas sumamos lo que cada carta nos dice.</p></details>
       <details><summary>¿Cómo funciona la ronda online?</summary><p>Es por videollamada. Cada una saca sus cartas de su mazo y las dicta; yo las voy ubicando en una mesa compartida, en <a href="https://mesadetarot.com" target="_blank" rel="noopener">Mesa de Tarot</a>, para que todas las veamos. No tenés que instalar nada. Al final te llevás la imagen de tu lectura.</p></details>
@@ -218,6 +218,9 @@ function abrir(id){
     <label for="nombre">Nombre</label><input id="nombre" name="nombre" type="text" autocomplete="name" required>
     <label for="email">Mail</label><input id="email" name="email" type="email" autocomplete="email" required>
     <label for="whatsapp">WhatsApp</label><input id="whatsapp" name="whatsapp" type="tel" autocomplete="tel" placeholder="+54 9 ..." required>
+    <label for="nivel">¿Cuánta experiencia tenés con el tarot?</label>
+    <select id="nivel" name="nivel" required><option value="">Elegí una opción</option><option value="principiante">Es mi primera vez o recién empiezo</option><option value="algo">Ya leo un poco</option><option value="experiencia">Leo hace tiempo</option></select>
+    <p class="nota" style="margin-top:6px">Si recién empezás, te mandamos una mini guía para que llegues con lo básico.</p>
     <label class="check"><input type="checkbox" name="sinmazo"> ${on?"No tengo mazo y quiero ayuda para elegir uno.":"No tengo mazo: necesito que me presten uno."}</label>
     ${r.gratis_mesa?`<label class="check"><input type="checkbox" name="conmesa" onchange="actualizarBoton()"> Tengo Mesa de Tarot: entro sin cargo. Usá el mismo mail de tu cuenta, así lo chequeamos.</label>`:""}
     ${on?`<label class="check"><input type="checkbox" name="grabacion"> Acepto que la ronda se grabe para mostrar cómo funciona. Si no lo marcás, participás con la cámara apagada y no usamos tu imagen ni tu voz.</label>
@@ -238,10 +241,11 @@ async function enviar(r){
   const v=n=>f.elements[n]&&f.elements[n].value.trim();
   if(!v("nombre")||!/^\S+@\S+\.\S+$/.test(v("email"))||v("whatsapp").replace(/\D/g,"").length<8){err.textContent="Revisá nombre, mail y WhatsApp.";return}
   b.disabled=true; b.textContent="Enviando…"; err.textContent="";
+  if(!v("nivel")){err.textContent="Contanos cuánta experiencia tenés con el tarot.";return}
   const conmesa=!!(f.elements.conmesa&&f.elements.conmesa.checked);
   const cobra=r.cobro&&!conmesa;
-  const datos={ronda:r.id,tipo:r.tipo,fecha:r.fecha,hora:r.hora,fin:r.fin||"",lugar:r.lugar,precio:r.precio,pago:cobra?r.pago:"",cobro:cobra?r.cobro:"",monto:cobra?r.monto:"",conmesa:conmesa?"sí":"",cupos:r.cupos,
-    nivel:"",sinmazo:f.elements.sinmazo.checked?"sí":"",
+  const datos={ronda:r.id,tipo:r.tipo,fecha:r.fecha,hora:r.hora,fin:r.fin||"",lugar:r.lugar,precio:r.precio,pago:cobra?r.pago:"",cobro:cobra?r.cobro:"",monto:cobra?r.monto:"",conmesa:conmesa?"sí":"",nivel:v("nivel"),cupos:r.cupos,
+    sinmazo:f.elements.sinmazo.checked?"sí":"",
     nombre:v("nombre"),email:v("email"),whatsapp:v("whatsapp"),
     grabacion:r.tipo==="online"?(f.elements.grabacion.checked?"sí":"no, cámara apagada"):""};
   let res={ok:true};

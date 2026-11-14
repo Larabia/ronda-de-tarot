@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mini guía · Ronda de Tarot</title>
+<meta name="description" content="Mini guía para tu primera Ronda de Tarot: cómo está armado el Tarot de Marsella, los arcanos mayores, los menores y los cuatro palos.">
+<meta property="og:title" content="Mini guía para tu primera Ronda">
+<meta property="og:image" content="https://rondadetarot.com/guia/img/as-copas.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Special+Elite&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--marino:#140a5c;--vino:#3a1a27;--rojo:#b8402b;--dorado:#c9973f;--tinta:#2a2350;--papel:#f3ead6}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#e9dfc8}
+body{font-family:Archivo,system-ui,sans-serif;font-weight:500;color:var(--tinta);background:#efe5cf url(img/papel-crema.jpg) center/cover fixed no-repeat;line-height:1.55}
+img{display:block;max-width:100%;height:auto}
+.hand{font-family:Caveat,'Comic Sans MS',cursive;font-weight:700}
+.tw{font-family:'Special Elite',ui-monospace,monospace;letter-spacing:.04em}
+main{max-width:860px;margin:0 auto;padding:clamp(28px,6vw,64px) 22px 70px;overflow:hidden}
+
+/* portada */
+.portada{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;margin-bottom:clamp(30px,6vw,56px)}
+.kicker{font-size:15px;color:var(--vino);text-transform:uppercase}
+h1{font-weight:900;color:var(--marino);font-size:clamp(64px,15vw,138px);line-height:.85;letter-spacing:-.05em;margin-top:8px}
+.sub{font-size:clamp(30px,6vw,46px);color:var(--marino);line-height:1;margin-top:10px;transform:rotate(-2deg);transform-origin:left}
+.round{width:clamp(96px,18vw,150px);transform:rotate(5deg);filter:drop-shadow(4px 8px 12px rgba(60,40,20,.3))}
+
+.intro{font-size:clamp(18px,2.4vw,21px);max-width:640px;margin-bottom:10px}
+.intro b{color:var(--marino)}
+
+/* secciones */
+section{margin-top:clamp(46px,8vw,78px);position:relative}
+.rotulo{display:inline-block;position:relative;isolation:isolate;padding:14px 26px 22px 20px;margin-bottom:18px}
+.rotulo::before{content:"";position:absolute;inset:0;background:url(img/papel-kraft.webp) left top/100% 100% no-repeat;transform:rotate(-1.2deg);z-index:-1}
+h2{font-weight:900;color:var(--marino);font-size:clamp(28px,5vw,42px);letter-spacing:-.02em;line-height:1}
+.num{font-family:'Special Elite',monospace;font-size:15px;color:var(--vino);display:block;margin-bottom:4px}
+section p{font-size:clamp(17px,2.2vw,19px);max-width:680px;margin-top:10px}
+
+/* cartitas */
+.fila{display:grid;grid-template-columns:repeat(4,minmax(0,138px));gap:clamp(10px,2.6vw,24px);margin:24px 0 8px;align-items:start}
+.carta{position:relative;min-width:0}
+.carta img{border-radius:6px;box-shadow:3px 6px 14px rgba(60,40,20,.28)}
+.carta .cinta{position:absolute;top:-10px;left:50%;width:56%;height:20px;margin-left:-28%;background:rgba(236,226,200,.78);box-shadow:0 1px 2px rgba(0,0,0,.12);transform:rotate(-4deg)}
+.carta figcaption{font-family:Caveat,cursive;font-weight:700;font-size:clamp(14px,3.6vw,21px);color:var(--marino);text-align:center;margin-top:6px;line-height:1.1}
+.carta:nth-child(odd){transform:rotate(-2.5deg)}
+.carta:nth-child(even){transform:rotate(2deg);margin-top:12px}
+
+/* palos */
+.palos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,3vw,28px);margin-top:22px}
+.palo{display:grid;grid-template-columns:clamp(70px,14vw,108px) 1fr;gap:16px;align-items:center;background:rgba(255,252,244,.55);padding:16px;border-radius:4px}
+.palo img{border-radius:5px;box-shadow:2px 5px 10px rgba(60,40,20,.25);transform:rotate(-2deg)}
+.palo h3{font-weight:900;color:var(--marino);font-size:clamp(22px,3.4vw,28px);line-height:1}
+.palo .hand{font-size:clamp(21px,3vw,25px);color:var(--rojo);line-height:1.15;margin-top:6px;display:block}
+.palo p{font-size:16px;margin-top:6px}
+
+/* doodles */
+.doodle{position:absolute;pointer-events:none;color:var(--rojo)}
+.flecha{display:flex;align-items:center;gap:10px;font-family:Caveat,cursive;font-weight:700;font-size:clamp(20px,3vw,26px);color:var(--rojo);margin-top:10px}
+.flecha svg{width:120px;height:30px;flex:none}
+
+/* consejo */
+.consejo{position:relative;isolation:isolate;max-width:520px;margin:clamp(50px,8vw,80px) auto 0;padding:clamp(56px,9vw,80px) clamp(40px,7vw,70px) clamp(60px,10vw,90px);text-align:center}
+.consejo::before{content:"";position:absolute;inset:0;background:url(img/papel-blanco.webp) center/100% 100% no-repeat;transform:rotate(2deg);z-index:-1;filter:drop-shadow(4px 8px 14px rgba(60,40,20,.25))}
+.consejo .tw{font-size:13px;color:var(--vino);text-transform:uppercase}
+.consejo p{font-family:Caveat,cursive;font-weight:700;font-size:clamp(26px,4.4vw,34px);line-height:1.15;color:var(--marino);margin-top:10px}
+
+footer{margin-top:clamp(50px,8vw,80px);display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+footer img{width:64px;transform:rotate(-4deg)}
+footer p{font-size:15px}
+footer a{color:var(--marino);font-weight:700}
+
+@media (max-width:620px){
+  .palos{grid-template-columns:1fr}
+  .portada{grid-template-columns:1fr}
+  .round{position:absolute;right:16px;top:44px;width:70px}
+  .carta .cinta{height:14px;top:-7px}
+  main{position:relative}
+}
+@media print{body{background:#fff}.rotulo::before,.consejo::before{display:none}}
+</style>
+</head>
+<body>
+<main>
+
+  <header class="portada">
+    <div>
+      <p class="kicker tw">Ronda de Tarot · para empezar</p>
+      <h1>MINI<br>GUÍA</h1>
+      <p class="sub hand">para tu primera Ronda</p>
+    </div>
+    <img class="round" src="img/the-round.webp" alt="Carta de la Ronda de Tarot" width="454" height="741">
+  </header>
+
+  <p class="intro">El Tarot de Marsella tiene <b>78 cartas</b>. No hace falta saberlas de memoria para venir: alcanza con entender cómo está armado el mazo. Lo demás se aprende tirando.</p>
+
+  <section>
+    <div class="rotulo"><span class="num">22 cartas</span><h2>Los arcanos mayores</h2></div>
+    <p>Van del <b>Loco</b>, que no tiene número, al <b>Mundo</b> (XXI). Cada uno tiene nombre e imagen propia: el Mago, la Papisa, la Emperatriz, la Torre, la Luna… Hablan de los grandes temas de una situación. Cuando aparecen en una tirada, marcan lo importante.</p>
+    <div class="fila">
+      <figure class="carta"><span class="cinta"></span><img src="img/loco.jpg" alt="El Loco" width="360" height="666"><figcaption>El Loco</figcaption></figure>
+      <figure class="carta"><span class="cinta"></span><img src="img/mago.jpg" alt="El Mago" width="360" height="666"><figcaption>El Mago · I</figcaption></figure>
+      <figure class="carta"><span class="cinta"></span><img src="img/emperatriz.jpg" alt="La Emperatriz" width="360" height="666"><figcaption>La Emperatriz · III</figcaption></figure>
+      <figure class="carta"><span class="cinta"></span><img src="img/luna.jpg" alt="La Luna" width="360" height="666"><figcaption>La Luna · XVIII</figcaption></figure>
+    </div>
+    <p class="flecha"><svg viewBox="0 0 120 30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 18c20-6 45-9 70-7s32 3 42 0"/><path d="M104 4c5 4 9 7 12 10-4 3-9 6-14 10"/></svg>del 0 al XXI, cada una con su nombre</p>
+  </section>
+
+  <section>
+    <div class="rotulo"><span class="num">56 cartas</span><h2>Los arcanos menores</h2></div>
+    <p>Son <b>cuatro palos de 14 cartas</b> cada uno: del As al Diez, y cuatro figuras, que son la <b>Sota</b>, el <b>Caballero</b>, la <b>Reina</b> y el <b>Rey</b>. Hablan de lo cotidiano, de cómo se mueve la situación en lo concreto.</p>
+    <div class="fila">
+      <figure class="carta"><span class="cinta"></span><img src="img/sota-oros.jpg" alt="Sota de Oros" width="360" height="666"><figcaption>Sota</figcaption></figure>
+      <figure class="carta"><span class="cinta"></span><img src="img/caballero-espadas.jpg" alt="Caballero de Espadas" width="360" height="666"><figcaption>Caballero</figcaption></figure>
+      <figure class="carta"><span class="cinta"></span><img src="img/reina-bastos.jpg" alt="Reina de Bastos" width="360" height="666"><figcaption>Reina</figcaption></figure>
+      <figure class="carta"><span class="cinta"></span><img src="img/rey-copas.jpg" alt="Rey de Copas" width="360" height="666"><figcaption>Rey</figcaption></figure>
+    </div>
+    <p>En el Marsella, los numerales no tienen escenas: se leen por el <b>palo</b> y el <b>número</b>.</p>
+    <div class="fila">
+      <figure class="carta"><span class="cinta"></span><img src="img/dos-oros.jpg" alt="Dos de Oros" width="360" height="666"><figcaption>Dos de Oros</figcaption></figure>
+      <figure class="carta"><span class="cinta"></span><img src="img/cuatro-bastos.jpg" alt="Cuatro de Bastos" width="360" height="666"><figcaption>Cuatro de Bastos</figcaption></figure>
+      <figure class="carta"><span class="cinta"></span><img src="img/siete-copas.jpg" alt="Siete de Copas" width="360" height="666"><figcaption>Siete de Copas</figcaption></figure>
+      <figure class="carta"><span class="cinta"></span><img src="img/diez-espadas.jpg" alt="Diez de Espadas" width="360" height="666"><figcaption>Diez de Espadas</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="rotulo"><span class="num">copas · oros · espadas · bastos</span><h2>Los cuatro palos</h2></div>
+    <div class="palos">
+      <div class="palo"><img src="img/as-copas.jpg" alt="As de Copas" width="360" height="666"><div><h3>Copas</h3><span class="hand">lo que se siente</span><p>Los afectos, los vínculos, las emociones.</p></div></div>
+      <div class="palo"><img src="img/as-oros.jpg" alt="As de Oros" width="360" height="666"><div><h3>Oros</h3><span class="hand">lo que se tiene</span><p>El dinero, el trabajo, el cuerpo, lo material.</p></div></div>
+      <div class="palo"><img src="img/as-espadas.jpg" alt="As de Espadas" width="360" height="666"><div><h3>Espadas</h3><span class="hand">lo que se piensa</span><p>El pensamiento, la palabra, las decisiones y los conflictos.</p></div></div>
+      <div class="palo"><img src="img/as-bastos.jpg" alt="As de Bastos" width="360" height="666"><div><h3>Bastos</h3><span class="hand">lo que se desea</span><p>El deseo, la energía, la acción, lo que se crea.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="rotulo"><span class="num">del As al Diez</span><h2>Los números y las figuras</h2></div>
+    <p>En los menores, el número dice en qué punto está esa energía: el <b>As</b> es el comienzo y el <b>Diez</b>, el cierre de un ciclo. Las figuras pueden mostrar personas o actitudes.</p>
+    <p class="flecha"><span>As</span><svg viewBox="0 0 120 30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 16c18-4 40-8 62-6s38 5 50 3"/><path d="M104 5c5 3 9 6 12 9-4 3-8 6-13 9"/></svg><span>Diez</span></p>
+  </section>
+
+  <section>
+    <div class="rotulo"><span class="num">Rider y otros</span><h2>Si leés con otro mazo</h2></div>
+    <p>La estructura es la misma: 22 mayores, 56 menores y los mismos cuatro palos, aunque a veces cambian de nombre. En el Rider, por ejemplo, los Oros son <b>Pentáculos</b> y los Bastos, <b>Varas</b>. En la Ronda caben todos los mazos.</p>
+  </section>
+
+  <aside class="consejo">
+    <span class="tw">Un consejo para la Ronda</span>
+    <p>Antes de buscar el significado, mirá la carta: qué ves, qué colores tiene, hacia dónde mira la figura. Eso ya es leer.</p>
+  </aside>
+
+  <footer>
+    <img src="img/the-round.webp" alt="" width="454" height="741">
+    <p><b>Ronda de Tarot</b> · <a href="https://rondadetarot.com">rondadetarot.com</a> · <a href="https://instagram.com/lorenabroda">@lorenabroda</a><br>Las cartas son del Tarot de Marsella de Nicolas Conver (escaneo de la Biblioteca Nacional de Francia).</p>
+  </footer>
+
+</main>
+</body>
+</html>
