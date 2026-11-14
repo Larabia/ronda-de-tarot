@@ -137,7 +137,8 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
       <details><summary>¿Cómo funciona la ronda online?</summary><p>Es por videollamada. Cada una saca sus cartas de su mazo y las dicta; yo las voy ubicando en una mesa compartida, en <a href="https://mesadetarot.com" target="_blank" rel="noopener">Mesa de Tarot</a>, para que todas las veamos. No tenés que instalar nada. Al final te llevás la imagen de tu lectura.</p></details>
       <details><summary>¿Desde dónde me conecto?</summary><p>Lo mejor es una compu o una tablet, así las cartas se ven grandes. Desde el celular también se puede. El día antes te llega el link de la videollamada.</p></details>
       <details><summary>¿La ronda online se graba?</summary><p>Sí, para mostrar cómo funciona. Si preferís no aparecer, participás con la cámara apagada y no usamos tu imagen ni tu voz.</p></details>
-      <details><summary>¿Cuánto cuesta?</summary><p>La presencial cuesta $35.000 e incluye una bebida a elección de Filomena (café, té, limonada o un exprimido recién hecho): para inscribirte dejás una seña de $5.000 y el resto se abona en el lugar. La online cuesta $15.000 y se paga al inscribirte. Si tenés <a href="https://mesadetarot.com" target="_blank" rel="noopener">Mesa de Tarot</a>, las rondas online son sin cargo.</p></details>
+      <details><summary>¿Puedo sumarme desde otro país?</summary><p>Sí, a las rondas online. El horario está en hora de Argentina, pero la página te muestra también la hora en tu horario. Pagás US$ 15 con PayPal.</p></details>
+      <details><summary>¿Cuánto cuesta?</summary><p>La presencial cuesta $35.000 e incluye una bebida a elección de Filomena (café, té, limonada o un exprimido recién hecho): para inscribirte dejás una seña de $5.000 y el resto se abona en el lugar. La online cuesta $15.000 con Mercado Pago, o US$ 15 con PayPal si estás en otro país, y se paga al inscribirte. Si tenés <a href="https://mesadetarot.com" target="_blank" rel="noopener">Mesa de Tarot</a>, las rondas online son sin cargo.</p></details>
       <details><summary>¿Y si después no puedo ir?</summary><p>Avisanos respondiendo el mail de confirmación, así le damos el lugar a otra persona.</p></details>
     </div>
   </section>
@@ -162,6 +163,7 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
       - cobro: "sena" (se deja una seña y el resto en el lugar), "total" (se paga todo al inscribirse) o "" (sin cargo).
       - monto: lo que se paga al inscribirse (ej. "$5.000" de seña o "$15.000" el total).
       - pago: link de pago de Mercado Pago de ese monto. Si todavía no está, se avisa que se manda por WhatsApp.
+      - monto_usd / pago_usd: precio y link de PayPal para quienes pagan desde otro país (solo online).
       - gratis_mesa: true si quienes tienen Mesa de Tarot entran sin cargo.
       - cupos: cantidad de lugares.
    ===================================================================== */
@@ -176,10 +178,15 @@ const RONDAS = [
   { id:"2026-11-25-online", tipo:"online", fecha:"2026-11-25", hora:"19:00", fin:"20:30",
     lugar:"Por videollamada, en Mesa de Tarot",
     precio:"$15.000 por persona · sin cargo si tenés Mesa de Tarot",
-    cobro:"total", monto:"$15.000", pago:"https://mpago.la/1uhG9Ua", gratis_mesa:true, cupos:6, a_cargo:"@lorenabroda" }
+    cobro:"total", monto:"$15.000", pago:"https://mpago.la/1uhG9Ua",
+    monto_usd:"US$ 15", pago_usd:"https://www.paypal.com/ncp/payment/MTWWZ6P5728VW", gratis_mesa:true, cupos:6, a_cargo:"@lorenabroda" }
 ];
 /* ===================================================================== */
 
+const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(e){return ""}})();
+const EN_AR=/^America\/(Argentina\/|Buenos_Aires)/.test(TZ)||(!TZ&&navigator.language==="es-AR");
+function horaLocal(r){if(EN_AR||!TZ)return "";try{const d=new Date(r.fecha+"T"+r.hora+":00-03:00");return d.toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:TZ})}catch(e){return ""}}
+function diaLocalDistinto(r){if(EN_AR||!TZ)return false;try{const d=new Date(r.fecha+"T"+r.hora+":00-03:00");return d.toLocaleDateString("en-CA",{timeZone:TZ})!==r.fecha}catch(e){return false}}
 const DIAS=["dom","lun","mar","mié","jue","vie","sáb"], MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 let ocupados={};
 const $=s=>document.querySelector(s);
@@ -197,10 +204,11 @@ function render(){
     return `<article class="ronda ${r.tipo}">
       <div class="fecha tw"><div class="dia">${DIAS[d.getDay()]}</div><div class="num">${d.getDate()}</div><div class="mes">${MESES[d.getMonth()]}</div></div>
       <div class="info"><h3>Ronda de Tarot <span class="tag">${r.tipo==="online"?"ONLINE":"PRESENCIAL"}</span></h3>
-        <p class="meta">${esc(r.hora)}${r.fin?" a "+esc(r.fin):""} hs. · ${mesa(esc(r.lugar))}</p>
+        <p class="meta">${esc(r.hora)}${r.fin?" a "+esc(r.fin):""} hs.${r.tipo==="online"?" de Argentina":""} · ${mesa(esc(r.lugar))}</p>
+        ${r.tipo==="online"&&horaLocal(r)?`<p class="meta"><b>${horaLocal(r)} hs. en tu horario${diaLocalDistinto(r)?" (otro día)":""}</b></p>`:""}
         <p>${mesa(esc(r.precio))}</p>
         ${r.tipo==="presencial"?`<p>Si no tenés mazo, te prestamos uno.</p>`:""}
-        ${r.cobro==="sena"?`<p>Para inscribirte dejás una seña de ${esc(r.monto)}; el resto se abona en el lugar.</p>`:r.cobro==="total"?`<p>Se paga al inscribirte.</p>`:""}
+        ${r.cobro==="sena"?`<p>Para inscribirte dejás una seña de ${esc(r.monto)}; el resto se abona en el lugar.</p>`:r.cobro==="total"?`<p>Se paga al inscribirte${r.pago_usd?`: en pesos con Mercado Pago o, desde otro país, ${esc(r.monto_usd)} con PayPal`:""}.</p>`:""}
         ${r.tipo==="online"?`<p>Necesitás tu mazo a mano. ¿No tenés y no sabés cuál comprar? <a href="${WA_MAZO}" target="_blank" rel="noopener" style="color:inherit">Escribinos y te ayudamos a elegir</a>.</p>`:""}
         ${r.a_cargo?`<p>A cargo: ${esc(r.a_cargo)}</p>`:""}
         <p class="cupos">${lleno?"Sin lugares":(SCRIPT_URL?libres+(libres===1?" lugar disponible":" lugares disponibles"):r.cupos+" lugares")}</p></div>
@@ -225,7 +233,7 @@ function abrir(id){
     ${r.gratis_mesa?`<label class="check"><input type="checkbox" name="conmesa" onchange="actualizarBoton()"> Tengo Mesa de Tarot: entro sin cargo. Usá el mismo mail de tu cuenta, así lo chequeamos.</label>`:""}
     ${on?`<label class="check"><input type="checkbox" name="grabacion"> Acepto que la ronda se grabe para mostrar cómo funciona. Si no lo marcás, participás con la cámara apagada y no usamos tu imagen ni tu voz.</label>
     <p class="nota">Necesitás tu mazo a mano. Cada una saca sus cartas y yo las voy ubicando en la mesa compartida, para que todas las vean. Te conviene conectarte desde una compu o tablet, así las cartas se ven grandes. El día antes te llega el link de la videollamada.</p>`:""}
-    ${r.cobro==="sena"?`<p class="nota">Para reservar tu lugar dejás una seña de ${esc(r.monto)}${r.pago?" con Mercado Pago: al enviar el formulario te mostramos el link":"; te mandamos cómo pagarla"}. El resto se abona en el lugar. Si no tenés mazo, te prestamos uno.</p>`:r.cobro==="total"?`<p class="nota" id="notapago">La ronda cuesta ${esc(r.monto)} y se paga al inscribirte${r.pago?" con Mercado Pago: al enviar el formulario te mostramos el link":"; te mandamos cómo pagarla"}. Tu lugar queda confirmado cuando se acredita el pago.</p>`:""}
+    ${r.cobro==="sena"?`<p class="nota">Para reservar tu lugar dejás una seña de ${esc(r.monto)}${r.pago?" con Mercado Pago: al enviar el formulario te mostramos el link":"; te mandamos cómo pagarla"}. El resto se abona en el lugar. Si no tenés mazo, te prestamos uno.</p>`:r.cobro==="total"?`<p class="nota" id="notapago">La ronda cuesta ${esc(r.monto)}${r.pago_usd?` (o ${esc(r.monto_usd)} desde otro país)`:""} y se paga al inscribirte: al enviar el formulario te mostramos ${r.pago_usd?"cómo pagar con Mercado Pago o PayPal":"el link de Mercado Pago"}. Tu lugar queda confirmado cuando se acredita el pago.</p>`:""}
     <p class="error" id="err" role="alert"></p>
     <div class="acciones"><button type="button" class="cerrar" onclick="$('#dlg').close()">Cancelar</button><button class="btn" id="enviar">${txtBoton(r,false)}</button></div>
   </form>`;
@@ -244,7 +252,7 @@ async function enviar(r){
   if(!v("nivel")){err.textContent="Contanos cuánta experiencia tenés con el tarot.";return}
   const conmesa=!!(f.elements.conmesa&&f.elements.conmesa.checked);
   const cobra=r.cobro&&!conmesa;
-  const datos={ronda:r.id,tipo:r.tipo,fecha:r.fecha,hora:r.hora,fin:r.fin||"",lugar:r.lugar,precio:r.precio,pago:cobra?r.pago:"",cobro:cobra?r.cobro:"",monto:cobra?r.monto:"",conmesa:conmesa?"sí":"",nivel:v("nivel"),cupos:r.cupos,
+  const datos={ronda:r.id,tipo:r.tipo,fecha:r.fecha,hora:r.hora,fin:r.fin||"",lugar:r.lugar,precio:r.precio,pago:cobra?r.pago:"",cobro:cobra?r.cobro:"",monto:cobra?r.monto:"",conmesa:conmesa?"sí":"",nivel:v("nivel"),tz:TZ,pais:EN_AR?"AR":"exterior",pago_usd:cobra?(r.pago_usd||""):"",monto_usd:cobra?(r.monto_usd||""):"",cupos:r.cupos,
     sinmazo:f.elements.sinmazo.checked?"sí":"",
     nombre:v("nombre"),email:v("email"),whatsapp:v("whatsapp"),
     grabacion:r.tipo==="online"?(f.elements.grabacion.checked?"sí":"no, cámara apagada"):""};
@@ -257,7 +265,10 @@ async function enviar(r){
   if(!res.ok){err.textContent=res.msg||"No se pudo enviar.";b.disabled=false;b.textContent=txtBoton(r,conmesa);if(res.lleno){ocupados[r.id]=r.cupos;render()}return}
   ocupados[r.id]=(ocupados[r.id]||0)+1; render();
   $("#formbox").innerHTML=`<div class="ok"><h3>¡Listo, ${esc(datos.nombre.split(" ")[0])}!</h3>
-    ${cobra&&r.pago?`<p>Guardamos tu lugar. Para confirmarlo, pagá ${r.cobro==="sena"?"la seña de ":""}${esc(r.monto)} con Mercado Pago:</p><a class="btn pagar" href="${esc(r.pago)}" target="_blank" rel="noopener">Pagar ${esc(r.monto)}</a><p>Te llega un mail con todos los datos.</p>`
+    ${cobra&&r.pago&&r.pago_usd?`<p>Guardamos tu lugar. Para confirmarlo, pagá la ronda:</p>${EN_AR
+        ?`<a class="btn pagar" href="${esc(r.pago)}" target="_blank" rel="noopener">Pagar ${esc(r.monto)} con Mercado Pago</a><p style="font-size:14px">¿Estás en otro país? <a href="${esc(r.pago_usd)}" target="_blank" rel="noopener" style="color:inherit">Pagá ${esc(r.monto_usd)} con PayPal</a>.</p>`
+        :`<a class="btn pagar" href="${esc(r.pago_usd)}" target="_blank" rel="noopener">Pagar ${esc(r.monto_usd)} con PayPal</a><p style="font-size:14px">¿Estás en Argentina? <a href="${esc(r.pago)}" target="_blank" rel="noopener" style="color:inherit">Pagá ${esc(r.monto)} con Mercado Pago</a>.</p>`}<p>Te llega un mail con todos los datos.</p>`
+      :cobra&&r.pago?`<p>Guardamos tu lugar. Para confirmarlo, pagá ${r.cobro==="sena"?"la seña de ":""}${esc(r.monto)} con Mercado Pago:</p><a class="btn pagar" href="${esc(r.pago)}" target="_blank" rel="noopener">Pagar ${esc(r.monto)}</a><p>Te llega un mail con todos los datos.</p>`
       :cobra?`<p>Guardamos tu lugar. Te llega un mail con los datos y te escribimos por WhatsApp para pasarte cómo pagar ${r.cobro==="sena"?"la seña de ":""}${esc(r.monto)}.</p>`
       :conmesa?`<p>Ya estás en la ronda, sin cargo por tener Mesa de Tarot. Te llega un mail con todos los datos, y el día antes, el link de la videollamada.</p>`
       :`<p>Ya estás en la ronda. Te llega un mail con todos los datos${r.tipo==="online"?", y el día antes, el link de la videollamada":""}.</p>`}
