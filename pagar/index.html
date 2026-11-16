@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Pago · Ronda de Tarot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{--violeta-1:#a593c9;--violeta-2:#1d1d4a;--marino:#140a5c;--papel:#efe6d3;--crema:#f9f5ee;--dorado:#dcae5a}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--violeta-2)}
+body{font-family:Archivo,system-ui,sans-serif;color:var(--crema);background:linear-gradient(var(--violeta-1) 0,var(--violeta-2) 700px,var(--violeta-2));min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 16px}
+.logo{font-weight:900;font-size:56px;line-height:.9;letter-spacing:-.03em;color:var(--marino);text-align:center;text-decoration:none}
+.logo small{display:block;font-family:'Special Elite',monospace;font-weight:400;font-size:20px;letter-spacing:.25em;margin-top:6px}
+.carta{width:120px;height:auto;margin:22px auto 0;filter:drop-shadow(5px 8px 14px rgba(0,0,20,.35))}
+.papel{background:var(--papel);color:var(--marino);max-width:520px;width:100%;margin-top:26px;padding:30px 28px;box-shadow:4px 8px 22px rgba(0,0,20,.3)}
+.papel .k{font-family:'Special Elite',monospace;font-size:13px;letter-spacing:.15em;text-transform:uppercase;opacity:.8}
+.papel h1{font-weight:900;font-size:28px;line-height:1.1;letter-spacing:-.02em;margin:8px 0 14px}
+.papel p{font-size:16.5px;line-height:1.55;margin-top:10px}
+.btn{display:inline-block;margin-top:18px;font-weight:800;font-size:16px;letter-spacing:.02em;text-transform:uppercase;text-decoration:none;border:0;cursor:pointer;padding:15px 22px;background:var(--marino);color:var(--crema);border-radius:2px}
+a{color:inherit}
+.puntos::after{content:"";animation:p 1.2s steps(4) infinite}
+@keyframes p{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+</style>
+</head>
+<body>
+<a class="logo" href="/">RONDA<small>DE TAROT</small></a>
+<img class="carta" src="/the-round.png" alt="Carta de la Ronda de Tarot" width="454" height="741">
+<div class="papel" id="caja" role="status" aria-live="polite"><div class="k">Pago</div><h1 class="puntos">Un momento</h1></div>
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVMU9harMPmKlwl0jIS37taNIWohfFyhH2oEfR2FHpBBTQ0Z6Hi_RTmFST3qjGdQln/exec";
+const WA = "https://wa.me/5491131042216";
+const q = new URLSearchParams(location.search);
+const id = q.get("id"), medio = q.get("medio") === "pp" ? "pp" : "mp", vuelta = q.get("vuelta");
+const caja = document.getElementById("caja");
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function mostrar(k, t, html) { caja.innerHTML = `<div class="k">${esc(k)}</div><h1>${esc(t)}</h1>${html || ""}`; }
+async function llamar(datos) {
+  const r = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(datos) });
+  return r.json();
+}
+const ayuda = `<p style="font-size:14.5px">¿Algún problema? <a href="${WA}" target="_blank" rel="noopener">Escribinos por WhatsApp</a> o respondé el mail de la inscripción.</p>`;
+async function revisarVuelta(intento) {
+  let res;
+  try { res = await llamar({ accion: "estado", id, orden: q.get("token") || "" }); } catch (e) { res = { ok: false }; }
+  if (!res.ok) { mostrar("Pago", "No pudimos revisar el pago", `<p>${esc(res.msg || "Probá recargar la página en un rato.")}</p>${ayuda}`); return; }
+  if (res.pagado) {
+    mostrar(res.cobro === "sena" ? "Seña recibida" : "Pago recibido", `¡Listo, ${res.nombre}! Tu lugar está confirmado.`,
+      `<p>Te mandamos un mail con la confirmación.${res.tipo === "online" ? " El día antes te llega el link de la videollamada." : " El día antes te escribimos para recordártelo."}</p><a class="btn" href="/">Volver a la Ronda</a>`);
+    return;
+  }
+  if (q.get("cancelado") || q.get("status") === "rejected" || q.get("collection_status") === "rejected") {
+    mostrar("Pago", "El pago no se completó", `<p>Tu lugar sigue reservado. Podés intentarlo de nuevo:</p><a class="btn" href="?id=${encodeURIComponent(id)}&medio=${vuelta === "pp" ? "pp" : "mp"}">Volver a pagar</a>${ayuda}`);
+    return;
+  }
+  if (intento < 4) { mostrar("Pago", "Estamos esperando la confirmación del pago", `<p class="puntos">Esto puede tardar unos segundos</p>`); setTimeout(() => revisarVuelta(intento + 1), 5000); return; }
+  mostrar("Pago", "Todavía no vemos el pago acreditado", `<p>A veces tarda unos minutos. Cuando se acredite, te llega un mail con la confirmación; no hace falta que hagas nada más.</p>${ayuda}`);
+}
+async function irAPagar() {
+  let res;
+  try { res = await llamar({ accion: "pagar", id, medio }); } catch (e) { res = { ok: false }; }
+  if (res.ok && res.pagado) { mostrar("Pago", "Este lugar ya está pago", `<p>Tu inscripción ya está confirmada. Si tenés dudas, escribinos.</p><a class="btn" href="/">Volver a la Ronda</a>`); return; }
+  if (res.ok && res.url) { mostrar("Pago", medio === "pp" ? "Te llevamos a PayPal" : "Te llevamos a Mercado Pago", `<p class="puntos">Un segundo</p><p style="font-size:14.5px">Si no pasa nada, <a href="${esc(res.url)}">tocá acá</a>.</p>`); location.replace(res.url); return; }
+  mostrar("Pago", "No pudimos armar el pago", `<p>${esc(res.msg || "Probá de nuevo en un rato.")}</p>${ayuda}`);
+}
+if (!id) mostrar("Pago", "Falta el código de tu inscripción", `<p>Entrá desde el link del mail o desde la página de la Ronda.</p><a class="btn" href="/">Ir a la Ronda</a>`);
+else if (vuelta) revisarVuelta(0);
+else irAPagar();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+[
+  {
+    "id": "2026-11-21-filomena",
+    "tipo": "presencial",
+    "fecha": "2026-11-21",
+    "hora": "13:00",
+    "fin": "16:00",
+    "lugar": "Filomena Café · Av. Perú 21, Pilcaniyeu, Río Negro",
+    "precio": "$35.000 por persona. Incluye una bebida a elección para acompañar la ronda: café, té, limonada o un exprimido recién hecho",
+    "cobro": "sena",
+    "monto": "$5.000",
+    "ars": 5000,
+    "pago": "https://mpago.la/13GX7P4",
+    "cupos": 10,
+    "a_cargo": "@lorenabroda y @shuli.magiapalabra"
+  },
+  {
+    "id": "2026-11-25-online",
+    "tipo": "online",
+    "fecha": "2026-11-25",
+    "hora": "19:00",
+    "fin": "20:30",
+    "lugar": "Por videollamada, en Mesa de Tarot",
+    "precio": "$15.000 por persona · sin cargo si tenés Mesa de Tarot",
+    "cobro": "total",
+    "monto": "$15.000",
+    "ars": 15000,
+    "pago": "https://mpago.la/1uhG9Ua",
+    "monto_usd": "US$ 15",
+    "usd": 15,
+    "pago_usd": "https://www.paypal.com/ncp/payment/MTWWZ6P5728VW",
+    "gratis_mesa": true,
+    "cupos": 6,
+    "a_cargo": "@lorenabroda"
+  }
+]

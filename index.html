@@ -155,32 +155,18 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
 /* =====================================================================
    CONFIGURACIÓN
    1) SCRIPT_URL: la URL de la aplicación web de Google Apps Script (ver LEEME).
-   2) RONDAS: el calendario. Para sumar una ronda, copiá un bloque y cambiá los datos.
-      - id: único, sin espacios (se usa en la planilla).
-      - tipo: "presencial" u "online".
-      - fecha: "AAAA-MM-DD", hora: "HH:MM" (hora de Argentina).
-      - precio: texto que se muestra.
-      - cobro: "sena" (se deja una seña y el resto en el lugar), "total" (se paga todo al inscribirse) o "" (sin cargo).
-      - monto: lo que se paga al inscribirse (ej. "$5.000" de seña o "$15.000" el total).
-      - pago: link de pago de Mercado Pago de ese monto. Si todavía no está, se avisa que se manda por WhatsApp.
-      - monto_usd / pago_usd: precio y link de PayPal para quienes pagan desde otro país (solo online).
-      - gratis_mesa: true si quienes tienen Mesa de Tarot entran sin cargo.
-      - cupos: cantidad de lugares.
+   2) Las rondas (fechas, precios, cupos y links) están en rondas.json: es la única fuente,
+      la usan esta página y el script. Para sumar una ronda, copiá un bloque de ese archivo y cambiá los datos.
+      - id: único, sin espacios. tipo: "presencial" u "online". fecha "AAAA-MM-DD", hora "HH:MM" (hora de Argentina).
+      - cobro: "sena", "total" o "" (sin cargo). monto (texto) y ars (número): lo que se paga al inscribirse.
+      - monto_usd (texto) y usd (número): precio con PayPal desde otro país (solo online).
+      - pago / pago_usd: links fijos de respaldo, por si el cobro automático no está conectado.
+      - gratis_mesa: true si quienes tienen Mesa de Tarot entran sin cargo (se verifica solo). cupos: lugares.
    ===================================================================== */
 const WA_MAZO = "https://wa.me/5491131042216?text=Hola%20Lorena%2C%20quiero%20ayuda%20para%20elegir%20un%20mazo%20de%20tarot";
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVMU9harMPmKlwl0jIS37taNIWohfFyhH2oEfR2FHpBBTQ0Z6Hi_RTmFST3qjGdQln/exec";
 
-const RONDAS = [
-  { id:"2026-11-21-filomena", tipo:"presencial", fecha:"2026-11-21", hora:"13:00", fin:"16:00",
-    lugar:"Filomena Café · Av. Perú 21, Pilcaniyeu, Río Negro",
-    precio:"$35.000 por persona. Incluye una bebida a elección para acompañar la ronda: café, té, limonada o un exprimido recién hecho",
-    cobro:"sena", monto:"$5.000", pago:"https://mpago.la/13GX7P4", cupos:10, a_cargo:"@lorenabroda y @shuli.magiapalabra" },
-  { id:"2026-11-25-online", tipo:"online", fecha:"2026-11-25", hora:"19:00", fin:"20:30",
-    lugar:"Por videollamada, en Mesa de Tarot",
-    precio:"$15.000 por persona · sin cargo si tenés Mesa de Tarot",
-    cobro:"total", monto:"$15.000", pago:"https://mpago.la/1uhG9Ua",
-    monto_usd:"US$ 15", pago_usd:"https://www.paypal.com/ncp/payment/MTWWZ6P5728VW", gratis_mesa:true, cupos:6, a_cargo:"@lorenabroda" }
-];
+let RONDAS = [];
 /* ===================================================================== */
 
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(e){return ""}})();
@@ -230,7 +216,7 @@ function abrir(id){
     <select id="nivel" name="nivel" required><option value="">Elegí una opción</option><option value="principiante">Es mi primera vez o recién empiezo</option><option value="algo">Ya leo un poco</option><option value="experiencia">Leo hace tiempo</option></select>
     <p class="nota" style="margin-top:6px">Si recién empezás, te mandamos una mini guía para que llegues con lo básico.</p>
     <label class="check"><input type="checkbox" name="sinmazo"> ${on?"No tengo mazo y quiero ayuda para elegir uno.":"No tengo mazo: necesito que me presten uno."}</label>
-    ${r.gratis_mesa?`<label class="check"><input type="checkbox" name="conmesa" onchange="actualizarBoton()"> Tengo Mesa de Tarot: entro sin cargo. Usá el mismo mail de tu cuenta, así lo chequeamos.</label>`:""}
+    ${r.gratis_mesa?`<label class="check"><input type="checkbox" name="conmesa" onchange="actualizarBoton()"> Tengo Mesa de Tarot: entro sin cargo. Usá el mail de tu cuenta de Mesa, así lo verificamos al instante.</label>`:""}
     ${on?`<label class="check"><input type="checkbox" name="grabacion"> Acepto que la ronda se grabe para mostrar cómo funciona. Si no lo marcás, participás con la cámara apagada y no usamos tu imagen ni tu voz.</label>
     <p class="nota">Necesitás tu mazo a mano. Cada una saca sus cartas y yo las voy ubicando en la mesa compartida, para que todas las vean. Te conviene conectarte desde una compu o tablet, así las cartas se ven grandes. El día antes te llega el link de la videollamada.</p>`:""}
     ${r.cobro==="sena"?`<p class="nota">Para reservar tu lugar dejás una seña de ${esc(r.monto)}${r.pago?" con Mercado Pago: al enviar el formulario te mostramos el link":"; te mandamos cómo pagarla"}. El resto se abona en el lugar. Si no tenés mazo, te prestamos uno.</p>`:r.cobro==="total"?`<p class="nota" id="notapago">La ronda cuesta ${esc(r.monto)}${r.pago_usd?` (o ${esc(r.monto_usd)} desde otro país)`:""} y se paga al inscribirte: al enviar el formulario te mostramos ${r.pago_usd?"cómo pagar con Mercado Pago o PayPal":"el link de Mercado Pago"}. Tu lugar queda confirmado cuando se acredita el pago.</p>`:""}
@@ -248,8 +234,8 @@ async function enviar(r){
   const f=$("#f"), err=$("#err"), b=$("#enviar");
   const v=n=>f.elements[n]&&f.elements[n].value.trim();
   if(!v("nombre")||!/^\S+@\S+\.\S+$/.test(v("email"))||v("whatsapp").replace(/\D/g,"").length<8){err.textContent="Revisá nombre, mail y WhatsApp.";return}
-  b.disabled=true; b.textContent="Enviando…"; err.textContent="";
   if(!v("nivel")){err.textContent="Contanos cuánta experiencia tenés con el tarot.";return}
+  b.disabled=true; b.textContent="Enviando…"; err.textContent="";
   const conmesa=!!(f.elements.conmesa&&f.elements.conmesa.checked);
   const cobra=r.cobro&&!conmesa;
   const datos={ronda:r.id,tipo:r.tipo,fecha:r.fecha,hora:r.hora,fin:r.fin||"",lugar:r.lugar,precio:r.precio,pago:cobra?r.pago:"",cobro:cobra?r.cobro:"",monto:cobra?r.monto:"",conmesa:conmesa?"sí":"",nivel:v("nivel"),tz:TZ,pais:EN_AR?"AR":"exterior",pago_usd:cobra?(r.pago_usd||""):"",monto_usd:cobra?(r.monto_usd||""):"",cupos:r.cupos,
@@ -264,13 +250,17 @@ async function enviar(r){
   }catch(e){res={ok:false,msg:e.message==="sin-script"?"La inscripción todavía no está conectada.":"No se pudo enviar. Probá de nuevo en un rato."}}
   if(!res.ok){err.textContent=res.msg||"No se pudo enviar.";b.disabled=false;b.textContent=txtBoton(r,conmesa);if(res.lleno){ocupados[r.id]=r.cupos;render()}return}
   ocupados[r.id]=(ocupados[r.id]||0)+1; render();
+  const afuera=!!(r.usd&&!EN_AR);
+  const pg=res.pagar||{};
+  const botones=res.cobra&&pg.mp?(r.usd&&pg.pp
+      ?(afuera?`<a class="btn pagar" href="${esc(pg.pp)}">Pagar ${esc(r.monto_usd)} con PayPal</a><p style="font-size:14px">¿Estás en Argentina? <a href="${esc(pg.mp)}" style="color:inherit">Pagá ${esc(r.monto)} con Mercado Pago</a>.</p>`
+              :`<a class="btn pagar" href="${esc(pg.mp)}">Pagar ${esc(r.monto)} con Mercado Pago</a><p style="font-size:14px">¿Estás en otro país? <a href="${esc(pg.pp)}" style="color:inherit">Pagá ${esc(r.monto_usd)} con PayPal</a>.</p>`)
+      :`<a class="btn pagar" href="${esc(pg.mp)}">Pagar ${r.cobro==="sena"?"la seña de ":""}${esc(r.monto)}</a>`):"";
+  const sinVerificar=res.cobra&&conmesa&&res.mesa===null;
   $("#formbox").innerHTML=`<div class="ok"><h3>¡Listo, ${esc(datos.nombre.split(" ")[0])}!</h3>
-    ${cobra&&r.pago&&r.pago_usd?`<p>Guardamos tu lugar. Para confirmarlo, pagá la ronda:</p>${EN_AR
-        ?`<a class="btn pagar" href="${esc(r.pago)}" target="_blank" rel="noopener">Pagar ${esc(r.monto)} con Mercado Pago</a><p style="font-size:14px">¿Estás en otro país? <a href="${esc(r.pago_usd)}" target="_blank" rel="noopener" style="color:inherit">Pagá ${esc(r.monto_usd)} con PayPal</a>.</p>`
-        :`<a class="btn pagar" href="${esc(r.pago_usd)}" target="_blank" rel="noopener">Pagar ${esc(r.monto_usd)} con PayPal</a><p style="font-size:14px">¿Estás en Argentina? <a href="${esc(r.pago)}" target="_blank" rel="noopener" style="color:inherit">Pagá ${esc(r.monto)} con Mercado Pago</a>.</p>`}<p>Te llega un mail con todos los datos.</p>`
-      :cobra&&r.pago?`<p>Guardamos tu lugar. Para confirmarlo, pagá ${r.cobro==="sena"?"la seña de ":""}${esc(r.monto)} con Mercado Pago:</p><a class="btn pagar" href="${esc(r.pago)}" target="_blank" rel="noopener">Pagar ${esc(r.monto)}</a><p>Te llega un mail con todos los datos.</p>`
-      :cobra?`<p>Guardamos tu lugar. Te llega un mail con los datos y te escribimos por WhatsApp para pasarte cómo pagar ${r.cobro==="sena"?"la seña de ":""}${esc(r.monto)}.</p>`
-      :conmesa?`<p>Ya estás en la ronda, sin cargo por tener Mesa de Tarot. Te llega un mail con todos los datos, y el día antes, el link de la videollamada.</p>`
+    ${res.gratis?`<p>Ya estás en la ronda, sin cargo: verificamos que tenés Mesa de Tarot. Te llega un mail con todos los datos, y el día antes, el link de la videollamada.</p>`
+      :sinVerificar?`<p>Guardamos tu lugar. Todavía no pudimos verificar tu Mesa de Tarot: lo revisamos en un rato y te avisamos por mail. Si la tenés, no pagás nada.</p>`
+      :res.cobra?`${conmesa&&res.mesa===false?`<p>No encontramos una compra de Mesa de Tarot con este mail, así que la ronda se paga. Si la compraste con otro mail, escribinos y lo revisamos.</p>`:""}<p>Guardamos tu lugar. Para confirmarlo, pagá ${r.cobro==="sena"?"la seña":"la ronda"}:</p>${botones}<p>Te llega un mail con todos los datos. Cuando se acredita el pago, te confirmamos el lugar por mail.</p>`
       :`<p>Ya estás en la ronda. Te llega un mail con todos los datos${r.tipo==="online"?", y el día antes, el link de la videollamada":""}.</p>`}
     <div class="acciones"><span></span><button class="cerrar" onclick="$('#dlg').close()">Cerrar</button></div></div>`;
 }
@@ -279,7 +269,11 @@ async function cargarCupos(){
   if(!SCRIPT_URL) return;
   try{ const r=await fetch(SCRIPT_URL); ocupados=(await r.json()).ocupados||{}; render(); }catch(e){}
 }
-render(); cargarCupos();
+async function cargarRondas(){
+  try{ const r=await fetch("rondas.json",{cache:"no-store"}); RONDAS=await r.json(); }catch(e){ $("#cal").innerHTML='<p class="vacio">No pudimos cargar el calendario. Recargá la página.</p>'; return }
+  render(); cargarCupos();
+}
+cargarRondas();
 </script>
 </body>
 </html>
