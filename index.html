@@ -9,7 +9,7 @@
 <meta property="og:description" content="Vos le leés a alguien y alguien te lee a vos. Rondas presenciales y online.">
 <meta property="og:image" content="https://rondadetarot.com/ronda-cabecera.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Special+Elite&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800;900&family=Patrick+Hand&family=Special+Elite&display=swap" rel="stylesheet">
 <style>
 :root{
   --violeta-1:#a593c9; --violeta-2:#1d1d4a;
@@ -19,7 +19,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 html{background:var(--violeta-2)}
-body{font-family:Archivo,system-ui,sans-serif;color:var(--crema);background:linear-gradient(var(--violeta-1) 0,var(--violeta-2) 1100px,var(--violeta-2));min-height:100vh}
+body{font-family:Archivo,system-ui,sans-serif;font-weight:700;color:var(--crema);background:linear-gradient(var(--violeta-1) 0,var(--violeta-2) 1100px,var(--violeta-2));min-height:100vh}
 img{display:block;max-width:100%}
 .tw{font-family:'Special Elite',ui-monospace,monospace;letter-spacing:.05em}
 .wrap{max-width:980px;margin:0 auto;padding:0 20px}
@@ -114,6 +114,12 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
   .fecha .num{font-size:38px}
   footer{text-align:left}
 }
+.notas{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px}
+.notas li{font-weight:400;font-size:15px;line-height:1.45;padding-left:16px;position:relative}
+.notas li::before{content:"–";position:absolute;left:0}
+.notas a{font-weight:500}
+.miradas p:not(.lead){font-family:'Patrick Hand',cursive;font-weight:400;font-size:clamp(20px,2.4vw,24px);line-height:1.4}
+.tw,.tw *,.miradas .lead,.info .meta,.form .meta,.vacio{font-weight:400}
 /* elegido: papel crema rasgado y cintas */
 .papel{background-image:url(img/papel-crema.webp);padding:50px 56px 56px 48px;color:var(--marino)}
 .lista li{padding:24px 64px 26px 52px}
@@ -220,9 +226,11 @@ function render(){
         <p class="meta">${esc(r.hora)}${r.fin?" a "+esc(r.fin):""} hs.${r.tipo==="online"?" de Argentina":""} · ${mesa(esc(r.lugar))}</p>
         ${r.tipo==="online"&&horaLocal(r)?`<p class="meta"><b>${horaLocal(r)} hs. en tu horario${diaLocalDistinto(r)?" (otro día)":""}</b></p>`:""}
         <p>${mesa(esc(r.precio))}</p>
-        ${r.tipo==="presencial"?`<p>Si no tenés mazo, te prestamos uno.</p>`:""}
-        ${r.cobro==="sena"?`<p>Para inscribirte dejás una seña de ${esc(r.monto)}; el resto se abona en el lugar.</p>`:r.cobro==="total"?`<p>Se paga al inscribirte${r.pago_usd?`: en pesos con Mercado Pago o, desde otro país, ${esc(r.monto_usd)} con PayPal`:""}.</p>`:""}
-        ${r.tipo==="online"?`<p>Necesitás tu mazo a mano. ¿No tenés y no sabés cuál comprar? <a href="${WA_MAZO}" target="_blank" rel="noopener" style="color:inherit">Escribinos y te ayudamos a elegir</a>.</p>`:""}
+        <ul class="notas">
+        ${r.tipo==="presencial"?`<li>Si no tenés mazo, te prestamos uno.</li>`:""}
+        ${r.cobro==="sena"?`<li>Para inscribirte dejás una seña de ${esc(r.monto)}; el resto se abona en el lugar.</li>`:r.cobro==="total"?`<li>Se paga al inscribirte${r.pago_usd?`: en pesos con Mercado Pago o, desde otro país, ${esc(r.monto_usd)} con PayPal`:""}.</li>`:""}
+        ${r.tipo==="online"?`<li>Necesitás tu mazo a mano. ¿No tenés y no sabés cuál comprar? <a href="${WA_MAZO}" target="_blank" rel="noopener" style="color:inherit">Escribinos y te ayudamos a elegir</a>.</li>`:""}
+        </ul>
         ${r.a_cargo?`<p>A cargo: ${esc(r.a_cargo)}</p>`:""}
         <p class="cupos">${lleno?"Sin lugares":(SCRIPT_URL?libres+(libres===1?" lugar disponible":" lugares disponibles"):r.cupos+" lugares")}</p></div>
       <button class="btn" ${lleno?"disabled":""} onclick="abrir('${r.id}')">${lleno?"Completa":"Anotarme"}</button>
