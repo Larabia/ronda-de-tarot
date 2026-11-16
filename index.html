@@ -22,6 +22,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 html{background:var(--violeta-2)}
+body{overflow-x:clip}
 body{font-family:Archivo,system-ui,sans-serif;font-weight:700;color:var(--crema);background:linear-gradient(var(--violeta-1) 0,var(--violeta-2) 1100px,var(--violeta-2));min-height:100vh}
 img{display:block;max-width:100%}
 .tw{font-family:'Special Elite',ui-monospace,monospace;letter-spacing:.05em}
@@ -79,8 +80,9 @@ h2{font-weight:900;font-size:clamp(40px,7vw,72px);letter-spacing:-.03em;color:va
 .faq p{font-size:16px;line-height:1.55;margin-top:10px}
 .faq a{color:inherit}
 select{width:100%;font:16px Archivo,sans-serif;padding:12px;border:1.5px solid currentColor;background:rgba(255,255,255,.55);color:inherit;border-radius:2px}
-footer{padding:30px 0 50px;color:var(--dorado);font-weight:700;text-transform:uppercase;font-size:15px;line-height:1.8;text-align:right}
-footer a{color:var(--dorado)}
+footer{padding:34px 0 40px;margin-top:20px;color:var(--marino);font-weight:700;text-transform:uppercase;font-size:15px;line-height:1.8;text-align:right;position:relative;z-index:0}
+footer::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:100vw;transform:translateX(-50%);background:var(--papel);z-index:-1}
+footer a{color:var(--marino)}
 footer{display:flex;align-items:center;justify-content:flex-end;gap:20px}
 footer .iso{width:96px;height:96px;flex:none}
 /* formulario */
@@ -187,7 +189,7 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
     <div>Seguinos: <a href="https://instagram.com/ronda.de.tarot">@ronda.de.tarot</a><br>
     Contacto: <a href="https://instagram.com/lorenabroda">@lorenabroda</a><br>
     Las rondas online se arman en <a href="https://mesadetarot.com">Mesa de Tarot</a></div>
-    <img class="iso" src="img/isotipo-circulo.webp" alt="Ronda de Tarot" width="96" height="96">
+    <img class="iso" src="img/isotipo.webp" alt="Ronda de Tarot" width="96" height="96">
   </footer>
 </main>
 
