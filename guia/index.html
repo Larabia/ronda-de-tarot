@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="/favicon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Mini guía · Ronda de Tarot</title>
 <meta name="description" content="Mini guía para tu primera Ronda de Tarot: cómo está armado el Tarot de Marsella, los arcanos mayores, los menores y los cuatro palos.">
 <meta property="og:title" content="Mini guía para tu primera Ronda">
@@ -81,6 +84,9 @@ section p{font-size:clamp(17px,2.2vw,19px);max-width:680px;margin-top:10px}
 
 footer{margin-top:clamp(50px,8vw,80px);display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 footer img{width:64px;transform:rotate(-4deg)}
+footer .iso{width:80px;height:80px;transform:none;flex:none}
+footer{flex-wrap:nowrap}
+@media(max-width:560px){footer .iso{width:64px;height:64px}}
 footer p{font-size:15px}
 footer a{color:var(--marino);font-weight:700}
 
@@ -183,7 +189,7 @@ footer a{color:var(--marino);font-weight:700}
   </aside>
 
   <footer>
-    <img src="img/the-round.webp" alt="" width="454" height="741">
+    <img class="iso" src="../img/isotipo.webp" alt="Ronda de Tarot" width="80" height="80">
     <p><b>Ronda de Tarot</b> · <a href="https://rondadetarot.com">rondadetarot.com</a> · <a href="https://instagram.com/lorenabroda">@lorenabroda</a><br>Las cartas son del Tarot de Marsella de Claude Burdel (1751).</p>
   </footer>
 
