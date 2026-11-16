@@ -13,26 +13,30 @@
 :root{--marino:#140a5c;--vino:#3a1a27;--rojo:#b8402b;--dorado:#c9973f;--tinta:#2a2350;--papel:#f3ead6}
 *{box-sizing:border-box;margin:0;padding:0}
 html{background:#e9dfc8}
-body{font-family:Archivo,system-ui,sans-serif;font-weight:500;color:var(--tinta);background:#efe5cf url(img/papel-crema.jpg) center/cover fixed no-repeat;line-height:1.55}
+body{font-family:Archivo,system-ui,sans-serif;font-weight:500;color:var(--tinta);background:#ede3cf;line-height:1.55}
 img{display:block;max-width:100%;height:auto}
 .hand{font-family:Caveat,'Comic Sans MS',cursive;font-weight:700}
 .tw{font-family:'Special Elite',ui-monospace,monospace;letter-spacing:.04em}
-main{max-width:860px;margin:0 auto;padding:clamp(28px,6vw,64px) 22px 70px;overflow:hidden}
+main{max-width:860px;margin:0 auto;padding:clamp(20px,4vw,40px) 22px 70px;overflow:hidden}
 
-/* portada */
-.portada{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;margin-bottom:clamp(30px,6vw,56px)}
-.kicker{font-size:15px;color:var(--vino);text-transform:uppercase}
-h1{font-weight:900;color:var(--marino);font-size:clamp(64px,15vw,138px);line-height:.85;letter-spacing:-.05em;margin-top:8px}
+/* portada: papel gris rasgado de lado a lado, como la página de la Ronda */
+.portada{padding:clamp(26px,5vw,48px) 22px clamp(10px,3vw,24px)}
+.portada-in{max-width:860px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;position:relative}
+.marca{width:clamp(150px,26vw,230px);display:block}
+h1{font-weight:900;color:var(--marino);font-size:clamp(64px,14vw,128px);line-height:.85;letter-spacing:-.05em;margin-top:clamp(14px,3vw,26px)}
 .sub{font-size:clamp(30px,6vw,46px);color:var(--marino);line-height:1;margin-top:10px;transform:rotate(-2deg);transform-origin:left}
-.round{width:clamp(96px,18vw,150px);transform:rotate(5deg);filter:drop-shadow(4px 8px 12px rgba(60,40,20,.3))}
+.round{width:clamp(110px,20vw,190px);transform:rotate(5deg);filter:drop-shadow(5px 10px 16px rgba(30,20,40,.35))}
 
 .intro{font-size:clamp(18px,2.4vw,21px);max-width:640px;margin-bottom:10px}
 .intro b{color:var(--marino)}
 
 /* secciones */
 section{margin-top:clamp(46px,8vw,78px);position:relative}
-.rotulo{display:inline-block;position:relative;isolation:isolate;padding:14px 26px 22px 20px;margin-bottom:18px}
-.rotulo::before{content:"";position:absolute;inset:0;background:url(img/papel-kraft.webp) left top/100% 100% no-repeat;transform:rotate(-1.2deg);z-index:-1}
+.rotulo{display:inline-block;padding:16px 40px 18px 30px;margin-bottom:16px;background:url(../img/cinta-kraft-2.webp) center/100% 100% no-repeat;transform:rotate(-1.2deg);filter:drop-shadow(2px 4px 6px rgba(60,40,20,.2))}
+section:nth-of-type(2) .rotulo{background-image:url(../img/cinta-dorada.webp);transform:rotate(1deg)}
+section:nth-of-type(3) .rotulo{background-image:url(../img/cinta-crema-3.webp);transform:rotate(-.6deg)}
+section:nth-of-type(4) .rotulo{background-image:url(../img/cinta-rosa-2.webp);transform:rotate(1.2deg)}
+section:nth-of-type(5) .rotulo{background-image:url(../img/cinta-kraft-3.webp);transform:rotate(-1deg)}
 h2{font-weight:900;color:var(--marino);font-size:clamp(28px,5vw,42px);letter-spacing:-.02em;line-height:1}
 .num{font-family:'Special Elite',monospace;font-size:15px;color:var(--vino);display:block;margin-bottom:4px}
 section p{font-size:clamp(17px,2.2vw,19px);max-width:680px;margin-top:10px}
@@ -41,29 +45,39 @@ section p{font-size:clamp(17px,2.2vw,19px);max-width:680px;margin-top:10px}
 .fila{display:grid;grid-template-columns:repeat(4,minmax(0,138px));gap:clamp(10px,2.6vw,24px);margin:24px 0 8px;align-items:start}
 .carta{position:relative;min-width:0}
 .carta img{border-radius:6px;box-shadow:3px 6px 14px rgba(60,40,20,.28)}
-.carta .cinta{position:absolute;top:-10px;left:50%;width:56%;height:20px;margin-left:-28%;background:rgba(236,226,200,.78);box-shadow:0 1px 2px rgba(0,0,0,.12);transform:rotate(-4deg)}
+.carta::before,.carta::after{content:"";position:absolute;width:46%;aspect-ratio:240/78;background:url(../img/cinta-chica.webp) center/100% 100% no-repeat;z-index:1;opacity:.92}
+.carta::before{top:-6px;left:-14%;transform:rotate(-38deg)}
+.carta::after{top:calc(100% - 52px);right:-14%;transform:rotate(-38deg)}
+.carta .cinta{display:none}
 .carta figcaption{font-family:Caveat,cursive;font-weight:700;font-size:clamp(14px,3.6vw,21px);color:var(--marino);text-align:center;margin-top:6px;line-height:1.1}
 .carta:nth-child(odd){transform:rotate(-2.5deg)}
 .carta:nth-child(even){transform:rotate(2deg);margin-top:12px}
 
 /* palos */
 .palos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,3vw,28px);margin-top:22px}
-.palo{display:grid;grid-template-columns:clamp(70px,14vw,108px) 1fr;gap:16px;align-items:center;background:rgba(255,252,244,.55);padding:16px;border-radius:4px}
+.palo{display:grid;grid-template-columns:clamp(70px,14vw,108px) 1fr;gap:16px;align-items:center;border:solid transparent;border-width:20px 12px 24px;border-image:url(../img/papel-crema.webp) 70 20 80 20 fill / 20px 12px 24px stretch;padding:6px 10px;filter:drop-shadow(3px 6px 10px rgba(60,40,20,.2))}
 .palo img{border-radius:5px;box-shadow:2px 5px 10px rgba(60,40,20,.25);transform:rotate(-2deg)}
 .palo h3{font-weight:900;color:var(--marino);font-size:clamp(22px,3.4vw,28px);line-height:1}
 .palo .hand{font-size:clamp(21px,3vw,25px);color:var(--rojo);line-height:1.15;margin-top:6px;display:block}
 .palo p{font-size:16px;margin-top:6px}
 
+/* mazos */
+.mazos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(18px,4vw,40px);margin-top:22px}
+.mazo{border:solid transparent;border-width:22px 14px 26px;border-image:url(../img/papel-crema.webp) 70 20 80 20 fill / 22px 14px 26px stretch;padding:10px 14px 6px;filter:drop-shadow(3px 6px 10px rgba(60,40,20,.2))}
+.mazo .par{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:280px;margin:6px 0 14px}
+.mazo h3{font-weight:900;color:var(--marino);font-size:clamp(22px,3.4vw,28px);line-height:1}
+.mazo .hand{font-size:clamp(21px,3vw,25px);color:var(--rojo);line-height:1.15;margin-top:4px;display:block}
+.mazo p{font-size:16px;margin-top:8px}
 /* doodles */
 .doodle{position:absolute;pointer-events:none;color:var(--rojo)}
 .flecha{display:flex;align-items:center;gap:10px;font-family:Caveat,cursive;font-weight:700;font-size:clamp(20px,3vw,26px);color:var(--rojo);margin-top:10px}
 .flecha svg{width:120px;height:30px;flex:none}
 
 /* consejo */
-.consejo{position:relative;isolation:isolate;max-width:520px;margin:clamp(50px,8vw,80px) auto 0;padding:clamp(56px,9vw,80px) clamp(40px,7vw,70px) clamp(60px,10vw,90px);text-align:center}
-.consejo::before{content:"";position:absolute;inset:0;background:url(img/papel-blanco.webp) center/100% 100% no-repeat;transform:rotate(2deg);z-index:-1;filter:drop-shadow(4px 8px 14px rgba(60,40,20,.25))}
+.consejo{position:relative;isolation:isolate;max-width:560px;margin:clamp(50px,8vw,80px) auto 0;padding:clamp(54px,8vw,70px) clamp(40px,7vw,70px) clamp(44px,7vw,60px);text-align:center}
+.consejo::before{content:"";position:absolute;inset:0;background:url(../img/rosa-recto.webp) center/100% 100% no-repeat;transform:rotate(2deg);z-index:-1;filter:drop-shadow(4px 8px 14px rgba(60,40,20,.25))}
 .consejo .tw{font-size:13px;color:var(--vino);text-transform:uppercase}
-.consejo p{font-family:Caveat,cursive;font-weight:700;font-size:clamp(26px,4.4vw,34px);line-height:1.15;color:var(--marino);margin-top:10px}
+.consejo p{font-family:Caveat,cursive;font-weight:700;font-size:clamp(26px,4.4vw,34px);line-height:1.15;color:var(--vino);margin-top:10px}
 
 footer{margin-top:clamp(50px,8vw,80px);display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 footer img{width:64px;transform:rotate(-4deg)}
@@ -71,26 +85,27 @@ footer p{font-size:15px}
 footer a{color:var(--marino);font-weight:700}
 
 @media (max-width:620px){
-  .palos{grid-template-columns:1fr}
-  .portada{grid-template-columns:1fr}
-  .round{position:absolute;right:16px;top:44px;width:70px}
+  .palos,.mazos{grid-template-columns:1fr}
+  .portada-in{grid-template-columns:1fr auto}
+  .round{width:96px}
   .carta .cinta{height:14px;top:-7px}
   main{position:relative}
 }
-@media print{body{background:#fff}.rotulo::before,.consejo::before{display:none}}
+@media print{body{background:#fff}.portada{background:none}.consejo::before,.carta::before,.carta::after{display:none}}
 </style>
 </head>
 <body>
-<main>
-
-  <header class="portada">
+<header class="portada">
+  <div class="portada-in">
     <div>
-      <p class="kicker tw">Ronda de Tarot · para empezar</p>
+      <a href="/"><img class="marca" src="../img/logo.webp" alt="Ronda de Tarot" width="983" height="341"></a>
       <h1>MINI<br>GUÍA</h1>
       <p class="sub hand">para tu primera Ronda</p>
     </div>
-    <img class="round" src="img/the-round.webp" alt="Carta de la Ronda de Tarot" width="454" height="741">
-  </header>
+    <img class="round" src="../img/carta.webp" alt="Carta de la Ronda de Tarot" width="700" height="1327">
+  </div>
+</header>
+<main>
 
   <p class="intro">El Tarot de Marsella tiene <b>78 cartas</b>. No hace falta saberlas de memoria para venir: alcanza con entender cómo está armado el mazo. Lo demás se aprende tirando.</p>
 
@@ -140,9 +155,26 @@ footer a{color:var(--marino);font-weight:700}
     <p class="flecha"><span>As</span><svg viewBox="0 0 120 30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 16c18-4 40-8 62-6s38 5 50 3"/><path d="M104 5c5 3 9 6 12 9-4 3-8 6-13 9"/></svg><span>Diez</span></p>
   </section>
 
-  <section>
-    <div class="rotulo"><span class="num">Rider y otros</span><h2>Si leés con otro mazo</h2></div>
-    <p>La estructura es la misma: 22 mayores, 56 menores y los mismos cuatro palos, aunque a veces cambian de nombre. En el Rider, por ejemplo, los Oros son <b>Pentáculos</b> y los Bastos, <b>Varas</b>. En la Ronda caben todos los mazos.</p>
+<section>
+    <div class="rotulo"><span class="num">Marsella y Rider</span><h2>Los dos mazos más populares</h2></div>
+    <p>Hay muchísimos mazos, pero casi todos vienen de dos grandes tradiciones. Tienen la misma estructura: 22 mayores, 56 menores y cuatro palos.</p>
+    <div class="mazos">
+      <div class="mazo">
+        <div class="par"><figure class="carta"><img src="img/mago.jpg" alt="El Mago del Tarot de Marsella" width="360" height="666"><figcaption>El Mago</figcaption></figure><figure class="carta"><img src="img/diez-espadas.jpg" alt="Diez de Espadas del Tarot de Marsella" width="360" height="666"><figcaption>Diez de Espadas</figcaption></figure></div>
+        <h3>Tarot de Marsella</h3>
+        <span class="hand">el más antiguo</span>
+        <p>Viene de los naipes que se pintaban en Italia en el siglo XV. Su forma se fijó en Francia entre los siglos XVII y XVIII, y toma el nombre de Marsella, una ciudad donde se fabricaban muchas cartas. Son grabados en madera con pocos colores.</p>
+        <p>Los numerales no tienen escenas: se leen por el palo, el número y cómo están dibujados.</p>
+      </div>
+      <div class="mazo">
+        <div class="par"><figure class="carta"><img src="img/rider-mago.jpg" alt="El Mago del Tarot Rider" width="360" height="622"><figcaption>El Mago</figcaption></figure><figure class="carta"><img src="img/rider-diez-espadas.jpg" alt="Diez de Espadas del Tarot Rider" width="360" height="622"><figcaption>Diez de Espadas</figcaption></figure></div>
+        <h3>Tarot Rider</h3>
+        <span class="hand">el de las escenas</span>
+        <p>Se publicó en Londres en 1909. Lo ideó Arthur Edward Waite y lo dibujó Pamela Colman Smith; Rider era la editorial. También se lo llama Rider-Waite o Rider-Waite-Smith.</p>
+        <p>Su gran novedad: <b>todas las cartas tienen una escena</b>, también los numerales, y eso ayuda a leerlas por la imagen.</p>
+      </div>
+    </div>
+    <p><b>Otras diferencias:</b> en el Rider, los Oros se llaman <b>Pentáculos</b> y los Bastos, <b>Varas</b>. La Fuerza y la Justicia cambian de lugar: en el Marsella la Justicia es la VIII y la Fuerza la XI, y en el Rider es al revés. En la Ronda caben todos los mazos.</p>
   </section>
 
   <aside class="consejo">
@@ -152,7 +184,7 @@ footer a{color:var(--marino);font-weight:700}
 
   <footer>
     <img src="img/the-round.webp" alt="" width="454" height="741">
-    <p><b>Ronda de Tarot</b> · <a href="https://rondadetarot.com">rondadetarot.com</a> · <a href="https://instagram.com/lorenabroda">@lorenabroda</a><br>Las cartas son del Tarot de Marsella de Nicolas Conver (escaneo de la Biblioteca Nacional de Francia).</p>
+    <p><b>Ronda de Tarot</b> · <a href="https://rondadetarot.com">rondadetarot.com</a> · <a href="https://instagram.com/lorenabroda">@lorenabroda</a><br>Las cartas son del Tarot de Marsella de Claude Burdel (1751).</p>
   </footer>
 
 </main>
