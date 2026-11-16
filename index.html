@@ -257,10 +257,10 @@ async function enviar(r){
               :`<a class="btn pagar" href="${esc(pg.mp)}">Pagar ${esc(r.monto)} con Mercado Pago</a><p style="font-size:14px">¿Estás en otro país? <a href="${esc(pg.pp)}" style="color:inherit">Pagá ${esc(r.monto_usd)} con PayPal</a>.</p>`)
       :`<a class="btn pagar" href="${esc(pg.mp)}">Pagar ${r.cobro==="sena"?"la seña de ":""}${esc(r.monto)}</a>`):"";
   const sinVerificar=res.cobra&&conmesa&&res.mesa===null;
-  $("#formbox").innerHTML=`<div class="ok"><h3>¡Listo, ${esc(datos.nombre.split(" ")[0])}!</h3>
+  $("#formbox").innerHTML=`<div class="ok"><h3>¡Listo, ${esc((n=>n.charAt(0).toUpperCase()+n.slice(1))(datos.nombre.trim().split(" ")[0]))}!</h3>
     ${res.gratis?`<p>Ya estás en la ronda, sin cargo: verificamos que tenés Mesa de Tarot. Te llega un mail con todos los datos, y el día antes, el link de la videollamada.</p>`
       :sinVerificar?`<p>Guardamos tu lugar. Todavía no pudimos verificar tu Mesa de Tarot: lo revisamos en un rato y te avisamos por mail. Si la tenés, no pagás nada.</p>`
-      :res.cobra?`${conmesa&&res.mesa===false?`<p>No encontramos una compra de Mesa de Tarot con este mail, así que la ronda se paga. Si la compraste con otro mail, escribinos y lo revisamos.</p>`:""}<p>Guardamos tu lugar. Para confirmarlo, pagá ${r.cobro==="sena"?"la seña":"la ronda"}:</p>${botones}<p>Te llega un mail con todos los datos. Cuando se acredita el pago, te confirmamos el lugar por mail.</p>`
+      :res.cobra?`<p>Te guardamos el lugar.</p>${conmesa&&res.mesa===false?`<p>No encontramos Mesa de Tarot con este mail. ¿Puede ser que la hayas comprado con otro? <a href="https://wa.me/5491131042216" target="_blank" rel="noopener" style="color:inherit">Escribinos</a> y lo revisamos.</p>`:""}<p>Para confirmarlo, podés pagar ${r.cobro==="sena"?"la seña":"la ronda"} acá:</p>${botones}<p>Te llega un mail con todos los datos. Cuando se acredita el pago, te confirmamos el lugar por mail.</p>`
       :`<p>Ya estás en la ronda. Te llega un mail con todos los datos${r.tipo==="online"?", y el día antes, el link de la videollamada":""}.</p>`}
     <div class="acciones"><span></span><button class="cerrar" onclick="$('#dlg').close()">Cerrar</button></div></div>`;
 }
