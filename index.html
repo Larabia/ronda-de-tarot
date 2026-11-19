@@ -148,11 +148,19 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
 @media (max-width:720px){.papel{padding:44px 32px 50px 28px}.lista li{padding:20px 46px 22px 40px}.lista .t1{padding:18px 70px 26px 36px}}
 
 /* ===== BORRADOR: alineado con el Instagram ===== */
-@font-face{font-family:LetraLola;src:url(fonts/caveat.woff2) format("woff2");font-display:swap}
-@font-face{font-family:LetraShuli;src:url(fonts/shadows.woff2) format("woff2");font-display:swap}
+@font-face{font-family:LetraCaveat;src:url(fonts/caveat.woff2) format("woff2");font-display:swap}
+@font-face{font-family:LetraShadows;src:url(fonts/shadows.woff2) format("woff2");font-display:swap}
+@font-face{font-family:LetraKalam;src:url(fonts/kalam.woff2) format("woff2");font-display:swap}
+@font-face{font-family:LetraGochi;src:url(fonts/gochi.woff2) format("woff2");font-display:swap}
 .bio p.letra{font-weight:400;line-height:1.3;margin-top:10px}
-.bio p.letra-lola{font-family:LetraLola,cursive;font-size:23px;font-weight:500}
-.bio p.letra-shuli{font-family:LetraShuli,cursive;font-size:20px;line-height:1.4}
+.bio p.letra-caveat,.bio p.letra-lola{font-family:LetraCaveat,cursive;font-size:23px;font-weight:500}
+.bio p.letra-shadows,.bio p.letra-shuli{font-family:LetraShadows,cursive;font-size:20px;line-height:1.4}
+.bio p.letra-kalam{font-family:LetraKalam,cursive;font-size:19px;line-height:1.45}
+.bio p.letra-gochi{font-family:LetraGochi,cursive;font-size:21px;line-height:1.35}
+/* foto dentro de un marco antiguo (el marco es un PNG con el hueco) */
+.enmarcada{position:relative;display:block;margin:0 auto;justify-self:center}
+.enmarcada .ft{position:absolute;background:#2a1a20 center 25%/cover no-repeat}
+.bio .enmarcada>img,.enmarcada>img{position:absolute;inset:0;width:100%!important;height:100%!important;max-width:none}
 @font-face{font-family:Karumbi;src:url(fonts/karumbi.woff2) format("woff2");font-display:swap}
 :root{--fondo:#a493c6;--tinta:#140a5c}
 html{background:var(--fondo)}
@@ -241,7 +249,7 @@ h2 .k{-webkit-text-stroke:1.4px currentColor;paint-order:stroke fill}
   <section class="sec plegable" id="calendario">
     <h2><span class="txt" onclick="plegar(this.nextElementSibling)">Próximas<span class="k">rondas</span></span><button type="button" class="plegar" aria-expanded="true" aria-label="Ocultar sección" onclick="plegar(this)">−</button></h2>
     <div class="leyenda"><span><i style="background:var(--papel)"></i>Presencial</span><span><i style="background:var(--rosa)"></i>Online, en <a href="https://mesadetarot.com" style="color:inherit">Mesa de Tarot</a></span></div>
-    <div class="cal" id="cal"></div>
+    <div class="cal" id="cal"><p class="vacio">Cargando las próximas rondas…</p></div>
   </section>
 
   <section class="sec plegable plegada manif" id="manifiesto">
@@ -291,13 +299,9 @@ h2 .k{-webkit-text-stroke:1.4px currentColor;paint-order:stroke fill}
 /* =====================================================================
    CONFIGURACIÓN
    1) SCRIPT_URL: la URL de la aplicación web de Google Apps Script (ver LEEME).
-   2) Las rondas (fechas, precios, cupos y links) están en rondas.json: es la única fuente,
-      la usan esta página y el script. Para sumar una ronda, copiá un bloque de ese archivo y cambiá los datos.
-      - id: único, sin espacios. tipo: "presencial" u "online". fecha "AAAA-MM-DD", hora "HH:MM" (hora de Argentina).
-      - cobro: "sena", "total" o "" (sin cargo). monto (texto) y ars (número): lo que se paga al inscribirse.
-      - monto_usd (texto) y usd (número): precio con PayPal desde otro país (solo online).
-      - pago / pago_usd: links fijos de respaldo, por si el cobro automático no está conectado.
-      - gratis_mesa: true si quienes tienen Mesa de Tarot entran sin cargo (se verifica solo). cupos: lugares.
+   2) Las rondas y las tarotistas se cargan desde el panel de admin (rondadetarot.com/admin):
+      se guardan en la planilla y esta página las lee del script. rondas.json y TAROTISTAS (más abajo)
+      quedan solo como respaldo, por si el script no responde.
    ===================================================================== */
 const WA_MAZO = "https://wa.me/5491131042216?text=Hola%20Lorena%2C%20quiero%20ayuda%20para%20elegir%20un%20mazo%20de%20tarot";
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVMU9harMPmKlwl0jIS37taNIWohfFyhH2oEfR2FHpBBTQ0Z6Hi_RTmFST3qjGdQln/exec";
@@ -316,16 +320,16 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 const mesa=h=>h.replace(/Mesa de Tarot/g,'<a href="https://mesadetarot.com" target="_blank" rel="noopener" style="color:inherit">Mesa de Tarot</a>');
 
 /* Tarotistas: la ficha de cada una. En rondas.json, «a_cargo» nombra a quienes están a cargo con su @ (por ejemplo "@lorenabroda y @shuli.magiapalabra"). */
-const TAROTISTAS={
-  "lorenabroda":{nombre:"Lola",letra:"lola",foto:"img/lorena.webp?v=3",bio:"Consultora psicológica, programadora y tarotista. Me nutro de muchas miradas para encontrar la mía: ese es el espíritu de la Ronda. Leo Tarot Revelado, que recupera el misticismo del Tarot como un lenguaje para dialogar con algo más grande que nosotras. Ahí, mi función como tarotista es ser canal. El Tarot trae claridad: corre con cuidado los velos de lo que nos da miedo ver, y así nos empodera."},
-  "shuli.magiapalabra":{nombre:"Shuli",letra:"shuli",foto:"img/shuli-oval.webp",ancho:180,bio:"Soy tarotista, instructora de yoga y educadora. Me apasiona compartir con otros seres los saberes que me atraviesan y acompañan. Hago Tarot evolutivo y terapéutico: entiendo los oráculos como formas de acceder a nuestro inconsciente y de recibir mensajes que sean llave, guía, farol."}
+let TAROTISTAS={
+  "lorenabroda":{nombre:"Lola",letra:"caveat",foto:"img/lorena.webp?v=3",bio:"Consultora psicológica, programadora y tarotista. Me nutro de muchas miradas para encontrar la mía: ese es el espíritu de la Ronda. Leo Tarot Revelado, que recupera el misticismo del Tarot como un lenguaje para dialogar con algo más grande que nosotras. Ahí, mi función como tarotista es ser canal. El Tarot trae claridad: corre con cuidado los velos de lo que nos da miedo ver, y así nos empodera."},
+  "shuli.magiapalabra":{nombre:"Shuli",letra:"shadows",foto:"img/shuli-oval.webp",ancho:180,bio:"Soy tarotista, instructora de yoga y educadora. Me apasiona compartir con otros seres los saberes que me atraviesan y acompañan. Hago Tarot evolutivo y terapéutico: entiendo los oráculos como formas de acceder a nuestro inconsciente y de recibir mensajes que sean llave, guía, farol."}
 };
 const aCargo=r=>((r.a_cargo||"").match(/@[\w.]+/g)||[]).map(h=>h.slice(1)).filter(h=>TAROTISTAS[h]);
 function quienes(id){
   const r=RONDAS.find(x=>x.id===id); const hs=aCargo(r);
   const box=$("#formbox"); box.className="form bios "+r.tipo+(hs.length>1?" dos":"");
   box.innerHTML=`<h3>${hs.length>1?"Quiénes están a cargo":"Quién está a cargo"}</h3>
-    <div class="lista-bios">${hs.map(h=>{const t=TAROTISTAS[h];return `<div class="bio"><img src="${t.foto}" alt="${esc(t.nombre)}" loading="lazy"${t.ancho?` style="width:${t.ancho}px"`:""}>
+    <div class="lista-bios">${hs.map(h=>{const t=TAROTISTAS[h];return `<div class="bio">${fotoHTML(t)}
       <div><h4>${esc(t.nombre)}</h4><a class="ig" href="https://instagram.com/${h}" target="_blank" rel="noopener">@${h}</a><p class="letra letra-${t.letra||''}">${esc(t.bio)}</p></div></div>`}).join("")}</div>
     <div class="acciones"><span></span><button class="cerrar" onclick="$('#dlg').close()">Cerrar</button></div>`;
   $("#dlg").showModal();
@@ -419,16 +423,39 @@ async function enviar(r){
     <div class="acciones"><span></span><button class="cerrar" onclick="$('#dlg').close()">Cerrar</button></div></div>`;
 }
 
-async function cargarCupos(){
-  if(!SCRIPT_URL) return;
-  try{ const r=await fetch(SCRIPT_URL); ocupados=(await r.json()).ocupados||{}; render(); }catch(e){}
+/* Marcos antiguos: ancho, alto y el hueco (x0, y0, x1, y1) de cada PNG; el último dato dice si es ovalado. */
+const FR={1:[615,756,91,88,524,665,0],2:[708,933,126,131,577,807,0],3:[679,963,142,199,537,785,1],4:[824,983,129,137,695,849,1],5:[729,898,106,103,622,792,0],6:[1147,767,155,144,994,619,0],7:[701,773,104,105,598,674,1],8:[757,928,149,128,608,800,0]};
+function fotoHTML(t){
+  const k=Number(t.marco)||0, w=Number(t.ancho)||160, src=String(t.foto||"").replace(/'/g,"%27");
+  if(!k||!FR[k]) return `<img src="${esc(src)}" alt="${esc(t.nombre)}" loading="lazy" style="width:${w}px">`;
+  const [fw,fh,x0,y0,x1,y1,ov]=FR[k], pad=6, p=v=>(v*100).toFixed(2)+"%";
+  return `<span class="enmarcada" style="width:${w}px;aspect-ratio:${fw}/${fh}" role="img" aria-label="${esc(t.nombre)}"><span class="ft" style="left:${p((x0-pad)/fw)};top:${p((y0-pad)/fh)};width:${p((x1-x0+2*pad)/fw)};height:${p((y1-y0+2*pad)/fh)};${ov?"border-radius:50%;":""}background-image:url('${esc(src)}')"></span><img src="img/marcos/m${k}.webp" alt=""></span>`;
+}
+/* Rondas y tarotistas: vienen del script (se cargan en el panel). Mientras tanto se muestra lo último que se vio. */
+function aplicar(d){
+  RONDAS=d.rondas;
+  if(Array.isArray(d.tarotistas)&&d.tarotistas.length){const t={};d.tarotistas.forEach(x=>{t[x.usuario]=x});TAROTISTAS=t}
 }
 async function cargarRondas(){
-  try{ const r=await fetch("rondas.json",{cache:"no-store"}); RONDAS=await r.json(); }catch(e){ $("#cal").innerHTML='<p class="vacio">No pudimos cargar el calendario. Recargá la página.</p>'; return }
-  render(); cargarCupos();
+  let previo=null;
+  try{previo=JSON.parse(localStorage.getItem("ronda-datos")||"null")}catch(e){}
+  if(previo&&Array.isArray(previo.rondas)){aplicar(previo);render()}
+  try{
+    const r=await fetch(SCRIPT_URL); const d=await r.json();
+    ocupados=d.ocupados||{};
+    if(Array.isArray(d.rondas)){
+      aplicar(d); render();
+      try{localStorage.setItem("ronda-datos",JSON.stringify({rondas:d.rondas,tarotistas:d.tarotistas||[]}))}catch(e){}
+      return;
+    }
+  }catch(e){}
+  // respaldo: rondas.json
+  if(previo&&Array.isArray(previo.rondas)){render();return}
+  try{ const r=await fetch("rondas.json",{cache:"no-store"}); RONDAS=await r.json(); render(); }
+  catch(e){ $("#cal").innerHTML='<p class="vacio">No pudimos cargar el calendario. Recargá la página.</p>' }
 }
 cargarRondas();
-function renderTarotistas(){const g=document.getElementById("tarot-grid");if(!g)return;g.innerHTML=Object.entries(TAROTISTAS).map(([h,t])=>`<div class="bio"><img src="${t.foto}" alt="${esc(t.nombre)}" loading="lazy"><div><h4>${esc(t.nombre)}</h4><a class="ig" href="https://instagram.com/${h}" target="_blank" rel="noopener">@${h}</a><p class="letra letra-${t.letra||''}">${esc(t.bio)}</p></div></div>`).join("")}
+function renderTarotistas(){const g=document.getElementById("tarot-grid");if(!g)return;g.innerHTML=Object.entries(TAROTISTAS).map(([h,t])=>`<div class="bio">${fotoHTML(t)}<div><h4>${esc(t.nombre)}</h4><a class="ig" href="https://instagram.com/${h}" target="_blank" rel="noopener">@${h}</a><p class="letra letra-${t.letra||''}">${esc(t.bio)}</p></div></div>`).join("")}
 renderTarotistas();
 </script>
 <script>
