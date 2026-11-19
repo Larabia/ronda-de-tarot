@@ -149,7 +149,7 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
 
 /* ===== BORRADOR: alineado con el Instagram ===== */
 @font-face{font-family:Karumbi;src:url(fonts/karumbi.woff2) format("woff2");font-display:swap}
-:root{--fondo:#b9aad4;--tinta:#140a5c}
+:root{--fondo:#a493c6;--tinta:#140a5c}
 html{background:var(--fondo)}
 body{background:var(--fondo);color:var(--tinta)}
 body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.35;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
@@ -184,12 +184,17 @@ h2 .k{display:inline;margin-left:.18em;font-family:Karumbi,cursive;font-weight:4
 .tit-form .circulo{flex:none;width:64px;height:64px;background:currentColor;-webkit-mask:url(img/circulo-mujeres.webp) center/contain no-repeat;mask:url(img/circulo-mujeres.webp) center/contain no-repeat}
 
 @media(max-width:560px){h2 .k{display:block!important;margin-left:0!important;white-space:normal!important}}
+/* manuscrita más gruesa */
+h2 .k{-webkit-text-stroke:1.4px currentColor;paint-order:stroke fill}
 /* secciones plegables */
 .plegable>h2{display:flex;align-items:baseline;gap:0}
 .plegable>h2 .txt{flex:1}
 .plegar{flex:none;align-self:center;margin-left:16px;width:44px;height:44px;border:2px solid currentColor;border-radius:50%;background:none;color:inherit;font:900 26px/1 Archivo,sans-serif;cursor:pointer;display:grid;place-items:center;padding:0}
 .plegar:hover{background:rgba(255,255,255,.35)}
 .plegable.plegada>:not(h2){display:none!important}
+.plegable>h2 .txt{flex:0 1 auto;cursor:pointer;padding-bottom:6px;border-bottom:6px solid transparent}
+.plegable>h2 .plegar{margin-left:auto}
+.plegable.plegada>h2 .txt{border-bottom-color:currentColor}
 @media(max-width:560px){.plegar{width:38px;height:38px;font-size:22px}}
 </style>
 </head>
@@ -215,13 +220,13 @@ h2 .k{display:inline;margin-left:.18em;font-family:Karumbi,cursive;font-weight:4
   
 
   <section class="sec plegable" id="calendario">
-    <h2><span class="txt">Próximas<span class="k">rondas</span></span><button type="button" class="plegar" aria-expanded="true" aria-label="Ocultar sección" onclick="plegar(this)">−</button></h2>
+    <h2><span class="txt" onclick="plegar(this.nextElementSibling)">Próximas<span class="k">rondas</span></span><button type="button" class="plegar" aria-expanded="true" aria-label="Ocultar sección" onclick="plegar(this)">−</button></h2>
     <div class="leyenda"><span><i style="background:var(--papel)"></i>Presencial</span><span><i style="background:var(--rosa)"></i>Online, en <a href="https://mesadetarot.com" style="color:inherit">Mesa de Tarot</a></span></div>
     <div class="cal" id="cal"></div>
   </section>
 
   <section class="sec plegable plegada manif" id="manifiesto">
-    <h2><span class="txt">Manifiesto<span class="k">de la ronda</span></span><button type="button" class="plegar" aria-expanded="false" aria-label="Mostrar sección" onclick="plegar(this)">+</button></h2>
+    <h2><span class="txt" onclick="plegar(this.nextElementSibling)">Manifiesto<span class="k">de la ronda</span></span><button type="button" class="plegar" aria-expanded="false" aria-label="Mostrar sección" onclick="plegar(this)">+</button></h2>
     <p class="lead">Trabajamos en ronda porque todas nuestras voces son diferentes, pero igual de valiosas. Este es nuestro manifiesto.</p>
     <ol class="principios">
       <li><span class="n">PRINCIPIO I</span><h3>Se aprende practicando</h3><p>Los cursos y los libros dan una base, pero a leer se aprende leyendo. En la ronda las cartas se tiran de verdad, a personas de verdad, con preguntas de verdad.</p></li>
