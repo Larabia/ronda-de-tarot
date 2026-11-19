@@ -86,7 +86,8 @@ footer a{color:var(--marino)}
 footer{display:flex;align-items:center;justify-content:flex-end;gap:20px}
 footer .iso{width:96px;height:96px;flex:none}
 /* formulario */
-.acargo{font-family:'Special Elite',monospace;font-size:16px;background:none;border:0;padding:0;margin:4px 0 2px;color:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
+.accion{display:flex;flex-direction:column;align-items:center;gap:12px}
+.acargo{font-family:'Special Elite',monospace;font-size:15px;line-height:1.35;background:none;border:0;padding:0;color:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:center}
 .acargo:focus-visible{outline:3px solid var(--dorado);outline-offset:3px}
 .bios h3{margin-bottom:6px}
 .bio{display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:center;margin-top:22px}
@@ -126,7 +127,7 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
   .ronda{grid-template-columns:1fr;gap:10px;padding:14px 12px}
   .fecha{display:flex;gap:10px;align-items:baseline;text-align:left}
   .fecha .dia,.fecha .mes{font-size:16px}
-  .ronda .btn{grid-column:1 / -1;width:100%}
+  .ronda .accion{grid-column:1 / -1}.ronda .btn{width:100%}
   .fecha .num{font-size:38px}
   footer{text-align:left}
   footer{justify-content:flex-start}
@@ -235,7 +236,7 @@ const mesa=h=>h.replace(/Mesa de Tarot/g,'<a href="https://mesadetarot.com" targ
 
 /* Tarotistas: la ficha de cada una. En rondas.json, «a_cargo» nombra a quienes están a cargo con su @ (por ejemplo "@lorenabroda y @shuli.magiapalabra"). */
 const TAROTISTAS={
-  "lorenabroda":{nombre:"Lola",foto:"img/lorena.webp",bio:"Consultora psicológica, programadora y tarotista. Me gusta nutrirme de muchas miradas para encontrar la mía: ese es el espíritu de la Ronda. Leo Tarot Revelado, que recupera el misticismo del Tarot como un lenguaje para dialogar con algo más grande que nosotras. Ahí, mi función como tarotista es ser canal. El Tarot trae claridad: corre con cuidado los velos de lo que nos da miedo ver, y así nos empodera."},
+  "lorenabroda":{nombre:"Lola",foto:"img/lorena.webp",bio:"Consultora psicológica, programadora y tarotista. Me nutro de muchas miradas para encontrar la mía: ese es el espíritu de la Ronda. Leo Tarot Revelado, que recupera el misticismo del Tarot como un lenguaje para dialogar con algo más grande que nosotras. Ahí, mi función como tarotista es ser canal. El Tarot trae claridad: corre con cuidado los velos de lo que nos da miedo ver, y así nos empodera."},
   "shuli.magiapalabra":{nombre:"Shuli",foto:"img/shuli.webp",bio:"Soy tarotista, instructora de yoga y educadora. Me apasiona compartir con otros seres los saberes que me atraviesan y acompañan. Hago Tarot evolutivo y terapéutico: entiendo los oráculos como formas de acceder a nuestro inconsciente y de recibir mensajes que sean llave, guía, farol."}
 };
 const aCargo=r=>((r.a_cargo||"").match(/@[\w.]+/g)||[]).map(h=>h.slice(1)).filter(h=>TAROTISTAS[h]);
@@ -268,9 +269,9 @@ function render(){
         ${r.cobro==="sena"?`<li>Para inscribirte dejás una seña de ${esc(r.monto)}; el resto se abona en el lugar.</li>`:r.cobro==="total"?`<li>Se paga al inscribirte${r.pago_usd?`: en pesos con Mercado Pago o, desde otro país, ${esc(r.monto_usd)} con PayPal`:""}.</li>`:""}
         ${r.tipo==="online"?`<li>Necesitás tu mazo a mano. ¿No tenés y no sabés cuál comprar? <a href="${WA_MAZO}" target="_blank" rel="noopener" style="color:inherit">Escribinos y te ayudamos a elegir</a>.</li>`:""}
         </ul>
-        ${aCargo(r).length?`<button type="button" class="acargo" onclick="quienes('${r.id}')">¿Quién está a cargo de esta ronda?</button>`:r.a_cargo?`<p>A cargo: ${esc(r.a_cargo)}</p>`:""}
+        ${!aCargo(r).length&&r.a_cargo?`<p>A cargo: ${esc(r.a_cargo)}</p>`:""}
         <p class="cupos">${lleno?"Sin lugares":(SCRIPT_URL?libres+(libres===1?" lugar disponible":" lugares disponibles"):r.cupos+" lugares")}</p></div>
-      <button class="btn" ${lleno?"disabled":""} onclick="abrir('${r.id}')">${lleno?"Completa":"Anotarme"}</button>
+      <div class="accion"><button class="btn" ${lleno?"disabled":""} onclick="abrir('${r.id}')">${lleno?"Completa":"Anotarme"}</button>${aCargo(r).length?`<button type="button" class="acargo" onclick="quienes('${r.id}')">¿Quién está a cargo<br>de esta ronda?</button>`:""}</div>
     </article>`}).join("");
 }
 
