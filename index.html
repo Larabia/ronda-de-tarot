@@ -146,6 +146,51 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
 .lista .t2{background-image:url(img/cinta-kraft-2.webp)}
 .lista .t3{background-image:url(img/cinta-dorada.webp)}
 @media (max-width:720px){.papel{padding:44px 32px 50px 28px}.lista li{padding:20px 46px 22px 40px}.lista .t1{padding:18px 70px 26px 36px}}
+
+/* ===== BORRADOR: alineado con el Instagram ===== */
+@font-face{font-family:Karumbi;src:url(fonts/karumbi.woff2) format("woff2");font-display:swap}
+:root{--fondo:#b9aad4;--tinta:#140a5c}
+html{background:var(--fondo)}
+body{background:var(--fondo);color:var(--tinta)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.35;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+h2{color:var(--tinta);text-transform:uppercase;font-size:clamp(30px,4.6vw,48px)}
+h2 .k{white-space:nowrap}
+@media(max-width:560px){h2 .k{display:block;margin-left:0;white-space:normal}}
+h2 .k{display:inline;margin-left:.18em;font-family:Karumbi,cursive;font-weight:400;text-transform:uppercase;letter-spacing:.06em;color:#8e4a5c;font-size:1.3em;line-height:.95;margin-top:0;letter-spacing:.02em}
+.leyenda{color:var(--tinta)}
+.vacio{color:var(--tinta)}
+/* manifiesto */
+.manif .lead{font-family:'Special Elite',monospace;font-weight:400;font-size:clamp(18px,2.3vw,22px);line-height:1.5;max-width:720px;margin:14px 0 30px}
+.principios{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:26px 22px;margin:0;padding:0}
+.principios li{position:relative;background:url(img/papel-rosa-roto.webp) center/100% 100% no-repeat;padding:44px 34px 46px;color:var(--tinta);filter:drop-shadow(3px 6px 10px rgba(20,10,60,.18))}
+.principios li:nth-child(3n+1){transform:rotate(-1.4deg)}
+.principios li:nth-child(3n+2){transform:rotate(1deg)}
+.principios li:nth-child(3n){transform:rotate(-.6deg)}
+.principios .n{font-family:'Special Elite',monospace;font-weight:400;font-size:15px;letter-spacing:.2em}
+.principios h3{font-weight:900;font-size:21px;line-height:1.1;text-transform:uppercase;margin:6px 0 8px}
+.principios p{font-weight:500;font-size:15px;line-height:1.45}
+.manif .cierre{font-family:'Special Elite',monospace;font-weight:400;font-size:clamp(17px,2.1vw,20px);line-height:1.5;max-width:720px;margin:34px 0 0}
+/* tarotistas */
+.tarotistas .grid{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:22px}
+.tarotistas .bio{grid-template-columns:1fr;justify-items:center;text-align:center;margin:0;align-items:start}
+.tarotistas .bio img{width:230px!important;height:300px;object-fit:contain}
+.tarotistas .bio p{font-size:16.5px}
+.tarotistas .bio .ig{color:var(--tinta)}
+/* preguntas: como el original, con más aire */
+.faq{gap:22px;margin-top:26px}
+@media(max-width:820px){.principios{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.principios{grid-template-columns:1fr}.tarotistas .grid{grid-template-columns:1fr}}
+.tit-form{display:flex;align-items:center;gap:14px}
+.tit-form .circulo{flex:none;width:64px;height:64px;background:currentColor;-webkit-mask:url(img/circulo-mujeres.webp) center/contain no-repeat;mask:url(img/circulo-mujeres.webp) center/contain no-repeat}
+
+@media(max-width:560px){h2 .k{display:block!important;margin-left:0!important;white-space:normal!important}}
+/* secciones plegables */
+.plegable>h2{display:flex;align-items:baseline;gap:0}
+.plegable>h2 .txt{flex:1}
+.plegar{flex:none;align-self:center;margin-left:16px;width:44px;height:44px;border:2px solid currentColor;border-radius:50%;background:none;color:inherit;font:900 26px/1 Archivo,sans-serif;cursor:pointer;display:grid;place-items:center;padding:0}
+.plegar:hover{background:rgba(255,255,255,.35)}
+.plegable.plegada>:not(h2){display:none!important}
+@media(max-width:560px){.plegar{width:38px;height:38px;font-size:22px}}
 </style>
 </head>
 <body>
@@ -167,21 +212,34 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
     </ul>
   </section>
 
-  <section class="sec miradas" id="miradas">
-    <h2>No hay una sola manera de leer.</h2>
-    <p class="lead">Marsella o Rider. Evolutivo o predictivo. En la Ronda caben todas las miradas.</p>
-    <p>Es un espacio de intercambio: practicás, aprendés de otras tarotistas y vas encontrando tu propia forma de leer.</p>
-    <p>Ninguna lectura es la única válida. En la diversidad de voces aparecen las preguntas, y ahí nos enriquecemos unas a otras.</p>
-  </section>
+  
 
-  <section class="sec" id="calendario">
-    <h2>Próximas rondas</h2>
+  <section class="sec plegable" id="calendario">
+    <h2><span class="txt">Próximas<span class="k">rondas</span></span><button type="button" class="plegar" aria-expanded="true" aria-label="Ocultar sección" onclick="plegar(this)">−</button></h2>
     <div class="leyenda"><span><i style="background:var(--papel)"></i>Presencial</span><span><i style="background:var(--rosa)"></i>Online, en <a href="https://mesadetarot.com" style="color:inherit">Mesa de Tarot</a></span></div>
     <div class="cal" id="cal"></div>
   </section>
 
+  <section class="sec plegable plegada manif" id="manifiesto">
+    <h2><span class="txt">Manifiesto<span class="k">de la ronda</span></span><button type="button" class="plegar" aria-expanded="false" aria-label="Mostrar sección" onclick="plegar(this)">+</button></h2>
+    <p class="lead">Trabajamos en ronda porque todas nuestras voces son diferentes, pero igual de valiosas. Este es nuestro manifiesto.</p>
+    <ol class="principios">
+      <li><span class="n">PRINCIPIO I</span><h3>Se aprende practicando</h3><p>Los cursos y los libros dan una base, pero a leer se aprende leyendo. En la ronda las cartas se tiran de verdad, a personas de verdad, con preguntas de verdad.</p></li>
+      <li><span class="n">PRINCIPIO II</span><h3>La carta antes que el manual</h3><p>Primero miramos: los colores, los gestos, hacia dónde mira la figura, qué nos pasa al verla. Después, si hace falta, buscamos el significado.</p></li>
+      <li><span class="n">PRINCIPIO III</span><h3>Las cartas se leen en contexto</h3><p>Una misma carta no dice lo mismo en todas las tiradas ni en todas las preguntas. Aprendemos a hilarlas y a encontrar el hilo de una lectura.</p></li>
+      <li><span class="n">PRINCIPIO IV</span><h3>Ninguna mirada es la única válida</h3><p>Marsella o Rider, evolutivo o predictivo: en la ronda caben todas. No imponemos un estilo: queremos que cada una encuentre el suyo.</p></li>
+      <li><span class="n">PRINCIPIO V</span><h3>Nadie lee sola</h3><p>Te tirás a la pileta, pero siempre hay alguien al lado. Mientras leés, te acompañamos: te señalamos lo que se ve, te ayudamos a seguir y a cerrar.</p></li>
+      <li><span class="n">PRINCIPIO VI</span><h3>Un espacio para equivocarse</h3><p>La ronda es un laboratorio. Podés probar una tirada nueva, una forma de decir o una predicción. Acá se prueba sin miedo.</p></li>
+      <li><span class="n">PRINCIPIO VII</span><h3>Leer también es cuidar</h3><p>Una lectura es un diálogo. Escuchamos la pregunta de quien consulta, hablamos claro y respetamos lo que trae.</p></li>
+      <li><span class="n">PRINCIPIO VIII</span><h3>Lo que recibimos, lo damos</h3><p>Leés y te leen. Lo que aprendés hoy se lo vas a pasar mañana a la que se sienta al lado.</p></li>
+      <li><span class="n">PRINCIPIO IX</span><h3>También nos reímos</h3><p>Las lecturas de la mesa se sincronizan: a todas nos atraviesan los mismos conflictos, y nos reímos un poco de nosotras mismas.</p></li>
+    </ol>
+    <p class="cierre">En la Ronda no venimos a encontrar una única mirada. Venimos a mirar juntas, a practicar y a descubrir nuestra propia forma de leer.</p>
+  </section>
+  
+
   <section class="sec" id="preguntas">
-    <h2>Preguntas frecuentes</h2>
+    <h2>Preguntas<span class="k">frecuentes</span></h2>
     <div class="faq">
       <details><summary>¿Necesito saber Tarot?</summary><p>No. La ronda es para todos los niveles: se aprende haciendo. Si es tu primera vez, al inscribirte te mandamos una <a href="/guia/">mini guía</a> con lo básico.</p></details>
       <details><summary>¿Con qué mazo se trabaja?</summary><p>Con el tuyo: Marsella, Rider o el que uses. Si no tenés y no sabés cuál comprar, <a href="https://wa.me/5491131042216?text=Hola%20Lorena%2C%20quiero%20ayuda%20para%20elegir%20un%20mazo%20de%20tarot" target="_blank" rel="noopener">escribinos y te ayudamos a elegir</a>. En las presenciales, si no tenés, te prestamos uno.</p></details>
@@ -280,7 +338,7 @@ function abrir(id){
   const d=new Date(r.fecha+"T12:00:00-03:00");
   const box=$("#formbox"); box.className="form "+r.tipo;
   box.innerHTML=`<form id="f" novalidate>
-    <h3>Ronda de Tarot ${on?"online":"presencial"}</h3>
+    <div class="tit-form"><span class="circulo" aria-hidden="true"></span><h3>Ronda de Tarot ${on?"online":"presencial"}</h3></div>
     <p class="meta">${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]} · ${esc(r.hora)} hs. · ${esc(r.precio)}</p>
     <label for="nombre">Nombre</label><input id="nombre" name="nombre" type="text" autocomplete="name" required>
     <label for="email">Mail</label><input id="email" name="email" type="email" autocomplete="email" required>
@@ -347,6 +405,11 @@ async function cargarRondas(){
   render(); cargarCupos();
 }
 cargarRondas();
+function renderTarotistas(){const g=document.getElementById("tarot-grid");if(!g)return;g.innerHTML=Object.entries(TAROTISTAS).map(([h,t])=>`<div class="bio"><img src="${t.foto}" alt="${esc(t.nombre)}" loading="lazy"><div><h4>${esc(t.nombre)}</h4><a class="ig" href="https://instagram.com/${h}" target="_blank" rel="noopener">@${h}</a><p>${esc(t.bio)}</p></div></div>`).join("")}
+renderTarotistas();
+</script>
+<script>
+function plegar(b){const sec=b.closest('section');const c=sec.classList.toggle('plegada');b.textContent=c?'+':'−';b.setAttribute('aria-expanded',!c);b.setAttribute('aria-label',c?'Mostrar sección':'Ocultar sección')}
 </script>
 </body>
 </html>
