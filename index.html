@@ -236,8 +236,8 @@ const mesa=h=>h.replace(/Mesa de Tarot/g,'<a href="https://mesadetarot.com" targ
 
 /* Tarotistas: la ficha de cada una. En rondas.json, «a_cargo» nombra a quienes están a cargo con su @ (por ejemplo "@lorenabroda y @shuli.magiapalabra"). */
 const TAROTISTAS={
-  "lorenabroda":{nombre:"Lola",foto:"img/lorena.webp",bio:"Consultora psicológica, programadora y tarotista. Me nutro de muchas miradas para encontrar la mía: ese es el espíritu de la Ronda. Leo Tarot Revelado, que recupera el misticismo del Tarot como un lenguaje para dialogar con algo más grande que nosotras. Ahí, mi función como tarotista es ser canal. El Tarot trae claridad: corre con cuidado los velos de lo que nos da miedo ver, y así nos empodera."},
-  "shuli.magiapalabra":{nombre:"Shuli",foto:"img/shuli.webp",bio:"Soy tarotista, instructora de yoga y educadora. Me apasiona compartir con otros seres los saberes que me atraviesan y acompañan. Hago Tarot evolutivo y terapéutico: entiendo los oráculos como formas de acceder a nuestro inconsciente y de recibir mensajes que sean llave, guía, farol."}
+  "lorenabroda":{nombre:"Lola",foto:"img/lorena.webp?v=3",bio:"Consultora psicológica, programadora y tarotista. Me nutro de muchas miradas para encontrar la mía: ese es el espíritu de la Ronda. Leo Tarot Revelado, que recupera el misticismo del Tarot como un lenguaje para dialogar con algo más grande que nosotras. Ahí, mi función como tarotista es ser canal. El Tarot trae claridad: corre con cuidado los velos de lo que nos da miedo ver, y así nos empodera."},
+  "shuli.magiapalabra":{nombre:"Shuli",foto:"img/shuli.webp?v=3",bio:"Soy tarotista, instructora de yoga y educadora. Me apasiona compartir con otros seres los saberes que me atraviesan y acompañan. Hago Tarot evolutivo y terapéutico: entiendo los oráculos como formas de acceder a nuestro inconsciente y de recibir mensajes que sean llave, guía, farol."}
 };
 const aCargo=r=>((r.a_cargo||"").match(/@[\w.]+/g)||[]).map(h=>h.slice(1)).filter(h=>TAROTISTAS[h]);
 function quienes(id){
