@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="/favicon-192.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Ronda de Tarot</title>
-<meta name="description" content="Rondas de tarot presenciales y online. Experiencia guiada: vos le leés a alguien y alguien te lee a vos.">
+<meta name="description" content="Rondas de Tarot presenciales y online. Experiencia guiada: vos le leés a alguien y alguien te lee a vos.">
 <meta property="og:title" content="Ronda de Tarot">
 <meta property="og:description" content="Vos le leés a alguien y alguien te lee a vos. Rondas presenciales y online.">
 <meta property="og:image" content="https://rondadetarot.com/ronda-cabecera.jpg">
@@ -86,6 +86,15 @@ footer a{color:var(--marino)}
 footer{display:flex;align-items:center;justify-content:flex-end;gap:20px}
 footer .iso{width:96px;height:96px;flex:none}
 /* formulario */
+.acargo{font-family:'Special Elite',monospace;font-size:16px;background:none;border:0;padding:0;margin:4px 0 2px;color:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
+.acargo:focus-visible{outline:3px solid var(--dorado);outline-offset:3px}
+.bios h3{margin-bottom:6px}
+.bio{display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:center;margin-top:22px}
+.bio img{width:150px;height:auto;display:block}
+.bio h4{font-weight:900;font-size:22px;margin:2px 0 2px}
+.bio .ig{font-family:'Special Elite',monospace;font-size:15px;color:inherit}
+.bio p{font-weight:500;font-size:16px;line-height:1.5;margin-top:8px}
+@media(max-width:520px){.bio{grid-template-columns:1fr}.bio img{width:170px}}
 dialog{border:0;padding:0;max-width:560px;width:calc(100% - 24px);background:transparent;margin:auto}
 dialog::backdrop{background:rgba(15,10,40,.7)}
 .form{background:var(--papel);color:var(--marino);padding:30px 28px 26px;max-height:90vh;overflow:auto}
@@ -173,7 +182,7 @@ input[type=text],input[type=email],input[type=tel]{width:100%;font:16px Archivo,
   <section class="sec" id="preguntas">
     <h2>Preguntas frecuentes</h2>
     <div class="faq">
-      <details><summary>¿Necesito saber tarot?</summary><p>No. La ronda es para todos los niveles: se aprende haciendo. Si es tu primera vez, al inscribirte te mandamos una <a href="/guia/">mini guía</a> con lo básico.</p></details>
+      <details><summary>¿Necesito saber Tarot?</summary><p>No. La ronda es para todos los niveles: se aprende haciendo. Si es tu primera vez, al inscribirte te mandamos una <a href="/guia/">mini guía</a> con lo básico.</p></details>
       <details><summary>¿Con qué mazo se trabaja?</summary><p>Con el tuyo: Marsella, Rider o el que uses. Si no tenés y no sabés cuál comprar, <a href="https://wa.me/5491131042216?text=Hola%20Lorena%2C%20quiero%20ayuda%20para%20elegir%20un%20mazo%20de%20tarot" target="_blank" rel="noopener">escribinos y te ayudamos a elegir</a>. En las presenciales, si no tenés, te prestamos uno.</p></details>
       <details><summary>¿Cómo es una ronda?</summary><p>Es una experiencia guiada: vos le leés a alguien y alguien te lee a vos. Vamos de a una, y entre todas sumamos lo que cada carta nos dice.</p></details>
       <details><summary>¿Cómo funciona la ronda online?</summary><p>Es por videollamada. Cada una saca sus cartas de su mazo y las dicta; yo las voy ubicando en una mesa compartida, en <a href="https://mesadetarot.com" target="_blank" rel="noopener">Mesa de Tarot</a>, para que todas las veamos. No tenés que instalar nada. Al final te llevás la imagen de tu lectura.</p></details>
@@ -224,6 +233,22 @@ const $=s=>document.querySelector(s);
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 const mesa=h=>h.replace(/Mesa de Tarot/g,'<a href="https://mesadetarot.com" target="_blank" rel="noopener" style="color:inherit">Mesa de Tarot</a>');
 
+/* Tarotistas: la ficha de cada una. En rondas.json, «a_cargo» nombra a quienes están a cargo con su @ (por ejemplo "@lorenabroda y @shuli.magiapalabra"). */
+const TAROTISTAS={
+  "lorenabroda":{nombre:"Lola",foto:"img/lorena.webp",bio:"Consultora psicológica, programadora y tarotista. Me gusta nutrirme de muchas miradas para encontrar la mía: ese es el espíritu de la Ronda. Leo Tarot Revelado, que recupera el misticismo del Tarot como un lenguaje para dialogar con algo más grande que nosotras. Ahí, mi función como tarotista es ser canal. El Tarot trae claridad: corre con cuidado los velos de lo que nos da miedo ver, y así nos empodera."},
+  "shuli.magiapalabra":{nombre:"Shuli",foto:"img/shuli.webp",bio:"Soy tarotista, instructora de yoga y educadora. Me apasiona compartir con otros seres los saberes que me atraviesan y acompañan. Hago Tarot evolutivo y terapéutico: entiendo los oráculos como formas de acceder a nuestro inconsciente y de recibir mensajes que sean llave, guía, farol."}
+};
+const aCargo=r=>((r.a_cargo||"").match(/@[\w.]+/g)||[]).map(h=>h.slice(1)).filter(h=>TAROTISTAS[h]);
+function quienes(id){
+  const r=RONDAS.find(x=>x.id===id); const hs=aCargo(r);
+  const box=$("#formbox"); box.className="form bios "+r.tipo;
+  box.innerHTML=`<h3>${hs.length>1?"Quiénes están a cargo":"Quién está a cargo"}</h3>
+    ${hs.map(h=>{const t=TAROTISTAS[h];return `<div class="bio"><img src="${t.foto}" alt="${esc(t.nombre)}" loading="lazy">
+      <div><h4>${esc(t.nombre)}</h4><a class="ig" href="https://instagram.com/${h}" target="_blank" rel="noopener">@${h}</a><p>${esc(t.bio)}</p></div></div>`}).join("")}
+    <div class="acciones"><span></span><button class="cerrar" onclick="$('#dlg').close()">Cerrar</button></div>`;
+  $("#dlg").showModal();
+}
+
 function render(){
   const hoy=new Date(); hoy.setHours(0,0,0,0);
   const prox=RONDAS.filter(r=>new Date(r.fecha+"T23:59:00-03:00")>=hoy).sort((a,b)=>a.fecha.localeCompare(b.fecha));
@@ -243,7 +268,7 @@ function render(){
         ${r.cobro==="sena"?`<li>Para inscribirte dejás una seña de ${esc(r.monto)}; el resto se abona en el lugar.</li>`:r.cobro==="total"?`<li>Se paga al inscribirte${r.pago_usd?`: en pesos con Mercado Pago o, desde otro país, ${esc(r.monto_usd)} con PayPal`:""}.</li>`:""}
         ${r.tipo==="online"?`<li>Necesitás tu mazo a mano. ¿No tenés y no sabés cuál comprar? <a href="${WA_MAZO}" target="_blank" rel="noopener" style="color:inherit">Escribinos y te ayudamos a elegir</a>.</li>`:""}
         </ul>
-        ${r.a_cargo?`<p>A cargo: ${esc(r.a_cargo)}</p>`:""}
+        ${aCargo(r).length?`<button type="button" class="acargo" onclick="quienes('${r.id}')">¿Quién está a cargo de esta ronda?</button>`:r.a_cargo?`<p>A cargo: ${esc(r.a_cargo)}</p>`:""}
         <p class="cupos">${lleno?"Sin lugares":(SCRIPT_URL?libres+(libres===1?" lugar disponible":" lugares disponibles"):r.cupos+" lugares")}</p></div>
       <button class="btn" ${lleno?"disabled":""} onclick="abrir('${r.id}')">${lleno?"Completa":"Anotarme"}</button>
     </article>`}).join("");
@@ -259,7 +284,7 @@ function abrir(id){
     <label for="nombre">Nombre</label><input id="nombre" name="nombre" type="text" autocomplete="name" required>
     <label for="email">Mail</label><input id="email" name="email" type="email" autocomplete="email" required>
     <label for="whatsapp">WhatsApp</label><input id="whatsapp" name="whatsapp" type="tel" autocomplete="tel" placeholder="+54 9 ..." required>
-    <label for="nivel">¿Cuánta experiencia tenés con el tarot?</label>
+    <label for="nivel">¿Cuánta experiencia tenés con el Tarot?</label>
     <select id="nivel" name="nivel" required><option value="">Elegí una opción</option><option value="principiante">Es mi primera vez o recién empiezo</option><option value="algo">Ya leo un poco</option><option value="experiencia">Leo hace tiempo</option></select>
     <p class="nota" style="margin-top:6px">Si recién empezás, te mandamos una mini guía para que llegues con lo básico.</p>
     <label class="check"><input type="checkbox" name="sinmazo"> ${on?"No tengo mazo y quiero ayuda para elegir uno.":"No tengo mazo: necesito que me presten uno."}</label>
@@ -281,7 +306,7 @@ async function enviar(r){
   const f=$("#f"), err=$("#err"), b=$("#enviar");
   const v=n=>f.elements[n]&&f.elements[n].value.trim();
   if(!v("nombre")||!/^\S+@\S+\.\S+$/.test(v("email"))||v("whatsapp").replace(/\D/g,"").length<8){err.textContent="Revisá nombre, mail y WhatsApp.";return}
-  if(!v("nivel")){err.textContent="Contanos cuánta experiencia tenés con el tarot.";return}
+  if(!v("nivel")){err.textContent="Contanos cuánta experiencia tenés con el Tarot.";return}
   b.disabled=true; b.textContent="Enviando…"; err.textContent="";
   const conmesa=!!(f.elements.conmesa&&f.elements.conmesa.checked);
   const cobra=r.cobro&&!conmesa;
