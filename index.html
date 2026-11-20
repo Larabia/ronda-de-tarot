@@ -326,6 +326,7 @@ let TAROTISTAS={
 };
 const aCargo=r=>((r.a_cargo||"").match(/@[\w.]+/g)||[]).map(h=>h.slice(1)).filter(h=>TAROTISTAS[h]);
 function quienes(id){
+  evento("quienes",{ronda:id});
   const r=RONDAS.find(x=>x.id===id); const hs=aCargo(r);
   const box=$("#formbox"); box.className="form bios "+r.tipo+(hs.length>1?" dos":"");
   box.innerHTML=`<h3>${hs.length>1?"Quiénes están a cargo":"Quién está a cargo"}</h3>
@@ -362,6 +363,7 @@ function render(){
 
 function abrir(id){
   const r=RONDAS.find(x=>x.id===id); const on=r.tipo==="online";
+  evento("anotarme",{ronda:id});
   const d=new Date(r.fecha+"T12:00:00-03:00");
   const box=$("#formbox"); box.className="form "+r.tipo;
   box.innerHTML=`<form id="f" novalidate>
@@ -391,8 +393,8 @@ function actualizarBoton(){const r=window._r,c=$("#f").elements.conmesa.checked;
 async function enviar(r){
   const f=$("#f"), err=$("#err"), b=$("#enviar");
   const v=n=>f.elements[n]&&f.elements[n].value.trim();
-  if(!v("nombre")||!/^\S+@\S+\.\S+$/.test(v("email"))||v("whatsapp").replace(/\D/g,"").length<8){err.textContent="Revisá nombre, mail y WhatsApp.";return}
-  if(!v("nivel")){err.textContent="Contanos cuánta experiencia tenés con el Tarot.";return}
+  if(!v("nombre")||!/^\S+@\S+\.\S+$/.test(v("email"))||v("whatsapp").replace(/\D/g,"").length<8){err.textContent="Revisá nombre, mail y WhatsApp.";evento("error",{ronda:r.id,detalle:err.textContent});return}
+  if(!v("nivel")){err.textContent="Contanos cuánta experiencia tenés con el Tarot.";evento("error",{ronda:r.id,detalle:err.textContent});return}
   b.disabled=true; b.textContent="Enviando…"; err.textContent="";
   const conmesa=!!(f.elements.conmesa&&f.elements.conmesa.checked);
   const cobra=r.cobro&&!conmesa;
@@ -406,7 +408,8 @@ async function enviar(r){
     const resp=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(datos)});
     res=await resp.json();
   }catch(e){res={ok:false,msg:e.message==="sin-script"?"La inscripción todavía no está conectada.":"No se pudo enviar. Probá de nuevo en un rato."}}
-  if(!res.ok){err.textContent=res.msg||"No se pudo enviar.";b.disabled=false;b.textContent=txtBoton(r,conmesa);if(res.lleno){ocupados[r.id]=r.cupos;render()}return}
+  if(!res.ok){err.textContent=res.msg||"No se pudo enviar.";evento("error",{ronda:r.id,detalle:err.textContent});b.disabled=false;b.textContent=txtBoton(r,conmesa);if(res.lleno){ocupados[r.id]=r.cupos;render()}return}
+  evento("enviado",{ronda:r.id});
   ocupados[r.id]=(ocupados[r.id]||0)+1; render();
   const afuera=!!(r.usd&&!EN_AR);
   const pg=res.pagar||{};
@@ -457,6 +460,19 @@ async function cargarRondas(){
 cargarRondas();
 function renderTarotistas(){const g=document.getElementById("tarot-grid");if(!g)return;g.innerHTML=Object.entries(TAROTISTAS).map(([h,t])=>`<div class="bio">${fotoHTML(t)}<div><h4>${esc(t.nombre)}</h4><a class="ig" href="https://instagram.com/${h}" target="_blank" rel="noopener">@${h}</a><p class="letra letra-${t.letra||''}">${esc(t.bio)}</p></div></div>`).join("")}
 renderTarotistas();
+/* Recorrido de la página: cuántas personas llegan a cada paso (sin cookies ni datos personales).
+   Para que no cuenten tus propias visitas, entrá una vez a rondadetarot.com/?yo=1 desde cada dispositivo. */
+const SIN_CONTAR=(()=>{try{const q=new URLSearchParams(location.search);if(q.get("yo")==="1")localStorage.setItem("ronda-yo","1");if(q.get("yo")==="0")localStorage.removeItem("ronda-yo");return localStorage.getItem("ronda-yo")==="1"}catch(e){return false}})();
+const SESION=(()=>{try{let s=sessionStorage.getItem("ronda-ses");if(!s){s=Math.random().toString(36).slice(2,12);sessionStorage.setItem("ronda-ses",s)}return s}catch(e){return Math.random().toString(36).slice(2,12)}})();
+const ORIGEN=(()=>{try{const q=new URLSearchParams(location.search);const u=q.get("utm_source")||q.get("origen");if(u)return u.toLowerCase().slice(0,30);if(/Instagram/i.test(navigator.userAgent))return "instagram";if(/FBAN|FBAV/i.test(navigator.userAgent))return "facebook";if(/WhatsApp/i.test(navigator.userAgent))return "whatsapp";const r=document.referrer?new URL(document.referrer).hostname.replace(/^www\.|^l\.|^lm\.|^m\./,""):"";if(!r||r===location.hostname)return "directo";if(/instagram/.test(r))return "instagram";if(/facebook/.test(r))return "facebook";if(/google\./.test(r))return "google";return r}catch(e){return "directo"}})();
+const DISP=/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)?"celu":"compu";
+function evento(ev,x){
+  if(SIN_CONTAR||!SCRIPT_URL)return;
+  x=x||{};
+  try{fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",keepalive:true,headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({accion:"evento",evento:ev,ses:SESION,ronda:x.ronda||"",origen:ORIGEN,disp:DISP,detalle:x.detalle||""})}).catch(()=>{})}catch(e){}
+}
+document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("a.pagar");if(a)evento("pagar",{ronda:(window._r||{}).id})});
+evento("visita");
 </script>
 <script>
 function plegar(b){const sec=b.closest('section');const c=sec.classList.toggle('plegada');b.textContent=c?'+':'−';b.setAttribute('aria-expanded',!c);b.setAttribute('aria-label',c?'Mostrar sección':'Ocultar sección')}
