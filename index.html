@@ -223,6 +223,14 @@ h2 .k{-webkit-text-stroke:1.4px currentColor;paint-order:stroke fill}
 .plegable>h2 .plegar{margin-left:auto}
 .plegable.plegada>h2 .txt{border-bottom-color:currentColor}
 @media(max-width:560px){.plegar{width:38px;height:38px;font-size:22px}}
+/* cartel de aviso (se oculta solo desde el lunes 14/12/2026) */
+.vacaciones{max-width:640px;margin:0 auto 10px;padding:46px 40px 50px;text-align:center;color:var(--tinta);background:url(img/papel-rosa-roto.webp) center/100% 100% no-repeat;transform:rotate(-1deg);filter:drop-shadow(4px 8px 14px rgba(20,10,60,.25))}
+.vacaciones p{font-family:'Special Elite',monospace;font-weight:400;font-size:clamp(18px,2.4vw,23px);line-height:1.4;letter-spacing:.04em;text-transform:uppercase}
+.vacaciones .grande{font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:clamp(28px,4.6vw,44px);line-height:1.05;letter-spacing:-.02em;margin-top:8px}
+.vacaciones .k{display:block;font-family:Karumbi,cursive;font-size:clamp(34px,5.4vw,52px);line-height:1;letter-spacing:.02em;color:#8e4a5c;margin-top:10px;text-transform:uppercase}
+.vacaciones .btn{display:inline-block;margin-top:22px;text-decoration:none}
+@media(max-width:560px){.vacaciones{padding:36px 26px 40px}}
+.ronda.resaltada{outline:4px solid var(--dorado);outline-offset:6px;transition:outline-color .6s}
 </style>
 </head>
 <body>
@@ -243,6 +251,14 @@ h2 .k{-webkit-text-stroke:1.4px currentColor;paint-order:stroke fill}
       <li class="t3">Laboratorio de experimentación e intuición</li>
     </ul>
   </section>
+
+  <section class="vacaciones" id="vacaciones" aria-label="Evento especial: ronda presencial en CABA el 13 de diciembre">
+    <p>Domingo 13 de diciembre</p>
+    <p class="grande">¡Evento súper especial!</p>
+    <p class="k">Ronda de Tarot presencial en CABA</p>
+    <a class="btn" href="#calendario" onclick="return irARonda('2026-12-13')">Más info e inscripción</a>
+  </section>
+  <script>if(new Date()>=new Date("2026-12-14T00:00:00-03:00"))document.getElementById("vacaciones").remove()</script>
 
   <section class="sec plegable" id="calendario">
     <h2><span class="txt" onclick="plegar(this.nextElementSibling)">Próximas<span class="k">rondas</span></span><button type="button" class="plegar" aria-expanded="true" aria-label="Ocultar sección" onclick="plegar(this)">−</button></h2>
@@ -342,7 +358,7 @@ function render(){
     const d=new Date(r.fecha+"T12:00:00-03:00");
     const libres=r.cupos-(ocupados[r.id]||0);
     const lleno=libres<=0;
-    return `<article class="ronda ${r.tipo}">
+    return `<article class="ronda ${r.tipo}" id="ronda-${r.id}" data-fecha="${r.fecha}">
       <div class="fecha tw"><div class="dia">${DIAS[d.getDay()]}</div><div class="num">${d.getDate()}</div><div class="mes">${MESES[d.getMonth()]}</div></div>
       <div class="info"><h3>Ronda de Tarot <span class="tag">${r.tipo==="online"?"ONLINE":"PRESENCIAL"}</span></h3>
         <p class="meta">${esc(r.hora)}${r.fin?" a "+esc(r.fin):""} hs.${r.tipo==="online"?" de Argentina":""} · ${mesa(esc(r.lugar))}</p>
@@ -359,6 +375,14 @@ function render(){
     </article>`}).join("");
 }
 
+/* lleva a la ronda de una fecha (desde el cartel) y la resalta */
+function irARonda(fecha){
+  const sec=document.getElementById("calendario"); if(sec.classList.contains("plegada")){const b=sec.querySelector(".plegar"); if(b)plegar(b)}
+  const el=document.querySelector('.ronda[data-fecha="'+fecha+'"]')||sec;
+  el.scrollIntoView({behavior:"smooth",block:"center"});
+  if(el.classList.contains("ronda")){el.classList.add("resaltada");setTimeout(()=>el.classList.remove("resaltada"),2600)}
+  return false;
+}
 function abrir(id){
   const r=RONDAS.find(x=>x.id===id); const on=r.tipo==="online";
   evento("anotarme",{ronda:id});
